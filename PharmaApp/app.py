@@ -1,2807 +1,1088 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import warnings
+warnings.filterwarnings("ignore")
+
 from pathlib import Path
-from typing import Dict, Any
+from datetime import datetime
+import hashlib
 
 import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 
-from scipy.optimize import differential_evolution
-
-from sklearn.ensemble import (
-    ExtraTreesRegressor,
-    RandomForestRegressor,
-    GradientBoostingRegressor,
-    HistGradientBoostingRegressor,
-)
-from sklearn.impute import SimpleImputer
-from sklearn.inspection import permutation_importance
-from sklearn.linear_model import Ridge
-from sklearn.metrics import (
-    r2_score,
-    mean_absolute_error,
-    mean_squared_error,
-)
 from sklearn.model_selection import (
     train_test_split,
-    RepeatedKFold,
-    RandomizedSearchCV,
+    KFold,
+    RandomizedSearchCV
 )
+from sklearn.ensemble import (
+    RandomForestRegressor,
+    GradientBoostingRegressor,
+    ExtraTreesRegressor
+)
+from sklearn.linear_model import Ridge
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score
+)
+from sklearn.preprocessing import PowerTransformer
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
-warnings.filterwarnings("ignore")
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+from scipy.optimize import differential_evolution
 
 
 # ============================================================
-# CONFIGURATION
+# ⚙️ SYSTEM CONFIGURATION
 # ============================================================
 
 st.set_page_config(
-    page_title="Virtual Formulation Lab",
+    page_title="🧪 Virtual Formulation Lab",
     page_icon="🧪",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="collapsed"
 )
 
 RANDOM_SEED = 42
-
 TEST_SIZE = 0.20
 
-CV_FOLDS = 5
-CV_REPEATS = 2
+DATA_FILE = "final Data All Exipients.csv"
 
-# Reduced from 10 to 5 to speed up optimization
-MAX_OPT_VARS = 5
-
-OPT_LOW_PERCENTILE = 5
-OPT_HIGH_PERCENTILE = 95
-
-MODEL_VERSION = "3.0"
-
-BASE_DIR = Path(__file__).resolve().parent
-
-MODEL_DIR = BASE_DIR / "saved_cqa_models"
+MODEL_DIR = Path("models")
 MODEL_DIR.mkdir(exist_ok=True)
+MODEL_FILE = MODEL_DIR / "formulation_models.joblib"
 
-META_FILE = MODEL_DIR / "training_metadata.json"
 
-DATASET_CANDIDATES = [
-    BASE_DIR / "final Data All Exipients.csv",
-    BASE_DIR / "final Data All Exipients.xlsx",
-    BASE_DIR / "final Data All Exipients.xls",
-]
+# ============================================================
+# 🎨 PROFESSIONAL UI STYLING - ENHANCED
+# ============================================================
+
+st.markdown("""
+<style>
+    /* Hide Streamlit default elements */
+    #MainMenu, footer, header { visibility: hidden; }
+    .block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 2rem;
+        max-width: 1400px;
+    }
+
+    /* Import Google Font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ===== MAIN TITLE ===== */
+    .main-title {
+        font-size: 2.6rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #0f172a 0%, #0284c7 40%, #0ea5e9 70%, #7c3aed 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.1rem;
+        letter-spacing: -0.5px;
+        padding: 0.5rem 0;
+        line-height: 1.2;
+        animation: gradientShift 4s ease-in-out infinite;
+        background-size: 300% 300%;
+    }
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    .subtitle {
+        color: #475569;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+        padding-bottom: 0.8rem;
+        border-bottom: 2px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .subtitle-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #059669;
+        font-weight: 600;
+    }
+    .subtitle-status::before {
+        content: "●";
+        font-size: 0.5rem;
+        animation: pulse 2s infinite;
+        color: #22c55e;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.2; }
+    }
+
+    /* ===== TABS STYLING ===== */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.25rem;
+        background: #f1f5f9;
+        border-radius: 14px;
+        padding: 0.4rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 10px;
+        padding: 0.6rem 1.6rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #64748b;
+        transition: all 0.3s ease;
+        background: transparent;
+        letter-spacing: 0.3px;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(255,255,255,0.6);
+        color: #0f172a;
+        transform: translateY(-1px);
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: #ffffff;
+        color: #0f172a;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e2e8f0;
+        font-weight: 700;
+    }
+
+    /* ===== RESULT CARDS ===== */
+    .result-card {
+        background: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
+        border-radius: 16px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .result-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #0284c7, #0ea5e9, #7c3aed);
+        background-size: 200% 100%;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    .result-card:hover::before {
+        opacity: 1;
+        animation: shimmer 2.5s linear infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .result-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 32px -8px rgba(0,0,0,0.12);
+        border-color: #bae6fd;
+    }
+    .result-label {
+        color: #94a3b8;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 6px;
+    }
+    .result-value {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #0284c7, #0ea5e9, #7c3aed);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        background-size: 200% 200%;
+        line-height: 1.2;
+        animation: gradientShift 4s ease-in-out infinite;
+    }
+    .result-unit {
+        font-size: 0.6rem;
+        color: #94a3b8;
+        font-weight: 500;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+    }
+
+    /* ===== SUCCESS BOX ===== */
+    .success-box {
+        padding: 14px 20px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-left: 5px solid #22c55e;
+        color: #166534;
+        font-size: 0.9rem;
+        margin: 12px 0;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #bbf7d0;
+    }
+
+    /* ===== BUTTONS ===== */
+    .stButton > button {
+        font-weight: 700 !important;
+        border-radius: 12px !important;
+        padding: 0.7rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
+        color: white !important;
+        width: 100% !important;
+        font-size: 0.95rem !important;
+        letter-spacing: 0.3px;
+        box-shadow: 0 4px 14px rgba(14, 165, 233, 0.2) !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 28px rgba(14, 165, 233, 0.3) !important;
+        background: linear-gradient(135deg, #0369a1, #0284c7) !important;
+    }
+    .stButton > button:active {
+        transform: translateY(0px) !important;
+    }
+
+    /* ===== DATAFRAME ===== */
+    .stDataFrame {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        border: 1px solid #f1f5f9 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02) !important;
+    }
+    .stDataFrame thead tr th {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        font-weight: 700 !important;
+        font-size: 0.7rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: #475569 !important;
+        padding: 0.8rem 1rem !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .stDataFrame tbody tr td {
+        padding: 0.7rem 1rem !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        border-bottom: 1px solid #f8fafc !important;
+    }
+    .stDataFrame tbody tr:hover {
+        background: #f8fafc !important;
+    }
+
+    /* ===== SELECTBOX & RADIO ===== */
+    .stSelectbox label, .stRadio label {
+        font-weight: 600 !important;
+        font-size: 0.8rem !important;
+        color: #334155 !important;
+        letter-spacing: 0.3px;
+    }
+    .stSelectbox > div > div {
+        border-radius: 10px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        background: #fafbfc !important;
+        transition: all 0.25s ease !important;
+    }
+    .stSelectbox > div > div:hover {
+        border-color: #94a3b8 !important;
+        background: #ffffff !important;
+    }
+    .stSelectbox > div > div:focus-within {
+        border-color: #0ea5e9 !important;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08) !important;
+    }
+    .stRadio [role="radiogroup"] {
+        gap: 0.75rem !important;
+    }
+    .stRadio [role="radio"] {
+        padding: 0.4rem 0.8rem !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease !important;
+    }
+    .stRadio [role="radio"]:hover {
+        background: #f1f5f9 !important;
+    }
+    .stRadio [role="radio"][aria-checked="true"] {
+        background: #eff6ff !important;
+        color: #0284c7 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ===== SECTION HEADERS ===== */
+    .section-header {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 1rem;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ===== OPTIMIZATION RESULT ===== */
+    .opt-result-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-radius: 14px;
+        padding: 1.5rem;
+        border: 1px solid #bbf7d0;
+        margin-top: 1rem;
+        box-shadow: 0 4px 20px rgba(34, 197, 94, 0.06);
+        transition: all 0.3s ease;
+    }
+    .opt-result-card:hover {
+        box-shadow: 0 8px 32px rgba(34, 197, 94, 0.1);
+        transform: translateY(-2px);
+    }
+
+    /* ===== INFO BOX ===== */
+    .stAlert {
+        border-radius: 12px !important;
+        border-left: 4px solid !important;
+        background: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        padding: 1rem !important;
+    }
+    .stAlert > div {
+        color: #1e293b !important;
+        font-weight: 500 !important;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* ===== FORM INPUT STYLING ===== */
+    .form-section {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.2rem;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+    }
+    .form-section-title {
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .stNumberInput > div > div > input {
+        border-radius: 8px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        padding: 0.4rem 0.7rem !important;
+        font-size: 0.85rem !important;
+        background: #ffffff !important;
+        font-weight: 500;
+        color: #0f172a !important;
+        height: 38px !important;
+        transition: all 0.25s ease !important;
+    }
+    .stNumberInput > div > div > input:focus {
+        border-color: #0ea5e9 !important;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08) !important;
+    }
+    .stNumberInput > div > div > input:hover {
+        border-color: #94a3b8 !important;
+    }
+    .stNumberInput label {
+        color: #475569 !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 2px !important;
+    }
+    
+    /* ===== EXPANDER STYLING ===== */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        border-radius: 10px !important;
+        border: 1px solid #e2e8f0 !important;
+        font-weight: 600 !important;
+        color: #0f172a !important;
+        padding: 0.8rem 1.2rem !important;
+        transition: all 0.3s ease !important;
+    }
+    .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+        border-color: #94a3b8 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .streamlit-expanderContent {
+        background: #ffffff !important;
+        border-radius: 0 0 10px 10px !important;
+        padding: 1rem 0.5rem !important;
+        border: 1px solid #e2e8f0 !important;
+        border-top: none !important;
+    }
+    .streamlit-expander {
+        margin-bottom: 0.8rem !important;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 1.8rem;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .result-value {
+            font-size: 1.5rem;
+        }
+        .stTabs [data-baseweb="tab"] {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# 📊 DATA LOADING
+# ============================================================
+
+@st.cache_data
+def load_data():
+    path = Path(DATA_FILE)
+    if not path.exists():
+        st.error("⚠️ Data file not found. Please check the file path.")
+        st.stop()
+
+    df_local = pd.read_csv(path)
+    df_local = df_local.dropna(axis=1, how="all")
+    df_local.columns = df_local.columns.astype(str).str.strip()
+
+    for col in df_local.columns:
+        if df_local[col].dtype == "object":
+            converted = pd.to_numeric(
+                df_local[col].astype(str).str.replace(",", "", regex=False),
+                errors="coerce"
+            )
+            if converted.notna().mean() >= 0.80:
+                df_local[col] = converted
+
+    return df_local
+
+df_raw = load_data()
+
+
+# ============================================================
+# 🔍 TARGETS & FEATURES CATEGORIZATION
+# ============================================================
 
 TARGETS = [
     "HARDNESS",
     "FRIABILITY",
     "Drug content",
     "Water absorption ratio",
-    "DISINTEGRATION_TIME",
+    "DISINTEGRATION_TIME"
 ]
 
-
-# ============================================================
-# PROFESSIONAL UI
-# ============================================================
-
-st.markdown(
-    """
-    <style>
-
-    #MainMenu {
-        visibility: hidden;
-    }
-
-    footer {
-        visibility: hidden;
-    }
-
-    header {
-        visibility: hidden;
-    }
-
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
-    }
-
-    .main-title {
-        font-size: 2.3rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 0.1rem;
-        letter-spacing: -0.5px;
-    }
-
-    .subtitle {
-        color: #475569;
-        font-size: 1rem;
-        margin-bottom: 1.5rem;
-        font-weight: 500;
-    }
-
-    .section-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-top: 1.2rem;
-        margin-bottom: 0.6rem;
-        border-bottom: 2px solid #cbd5e1;
-        padding-bottom: 0.3rem;
-    }
-
-    .result-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 16px;
-        background: #ffffff;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        text-align: center;
-    }
-
-    .result-label {
-        color: #64748b;
-        font-size: 0.82rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
-
-    .result-value {
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: #0284c7;
-    }
-
-    .info-box {
-        padding: 12px 16px;
-        border-radius: 8px;
-        background: #f0f9ff;
-        border-left: 4px solid #0284c7;
-        color: #0369a1;
-        font-size: 0.92rem;
-        margin: 10px 0;
-        font-weight: 500;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ============================================================
-# DATASET FINGERPRINT
-# ============================================================
-
-def get_dataset_path() -> Path:
-
-    for path in DATASET_CANDIDATES:
-
-        if path.exists():
-            return path
-
-    raise FileNotFoundError(
-        "Required formulation dataset was not found."
-    )
-
-
-def calculate_file_hash(path: Path) -> str:
-
-    sha256 = hashlib.sha256()
-
-    with open(path, "rb") as f:
-
-        for chunk in iter(
-            lambda: f.read(1024 * 1024),
-            b""
-        ):
-
-            sha256.update(chunk)
-
-    return sha256.hexdigest()
-
-
-def get_training_signature(path: Path) -> str:
-
-    signature_data = {
-
-        "model_version": MODEL_VERSION,
-
-        "dataset_hash": calculate_file_hash(path),
-
-        "targets": TARGETS,
-
-        "test_size": TEST_SIZE,
-
-        "cv_folds": CV_FOLDS,
-
-        "cv_repeats": CV_REPEATS,
-
-        "random_seed": RANDOM_SEED,
-
-    }
-
-    raw = json.dumps(
-        signature_data,
-        sort_keys=True
-    ).encode()
-
-    return hashlib.sha256(
-        raw
-    ).hexdigest()
-
-
-# ============================================================
-# DATA LOADING
-# ============================================================
-
-@st.cache_data(show_spinner=False)
-def load_dataset() -> pd.DataFrame:
-
-    path = get_dataset_path()
-
-    if path.suffix.lower() == ".csv":
-
-        df = pd.read_csv(path)
-
-    else:
-
-        df = pd.read_excel(path)
-
-    return clean_dataset(df)
-
-
-def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
-
-    df = df.copy()
-
-    for col in df.columns:
-
-        if df[col].dtype == "object":
-
-            converted = pd.to_numeric(
-                df[col]
-                .astype(str)
-                .str.replace(",", "", regex=False),
-                errors="coerce",
-            )
-
-            if converted.notna().mean() >= 0.80:
-
-                df[col] = converted
-
-    missing_targets = [
-        c
-        for c in TARGETS
-        if c not in df.columns
-    ]
-
-    if missing_targets:
-
-        raise ValueError(
-            f"Required CQA columns are missing: "
-            f"{missing_targets}"
-        )
-
-    numeric_cols = df.select_dtypes(
-        include=[np.number]
-    ).columns.tolist()
-
-    predictors = [
-        c
-        for c in numeric_cols
-        if c not in TARGETS
-    ]
-
-    df = (
-        df[
-            predictors + TARGETS
-        ]
-        .replace(
-            [np.inf, -np.inf],
-            np.nan
-        )
-        .drop_duplicates()
-    )
-
-    df = df.dropna(
-        subset=TARGETS,
-        how="all"
-    )
-
-    useful_predictors = []
-
-    for col in predictors:
-
-        if df[col].notna().sum() == 0:
-            continue
-
-        if df[col].nunique(
-            dropna=True
-        ) <= 1:
-            continue
-
-        useful_predictors.append(col)
-
-    df = df[
-        useful_predictors + TARGETS
-    ]
-
-    return df
-
-
-# ============================================================
-# METRICS
-# ============================================================
-
-def calculate_metrics(
-    y_true,
-    y_pred
-) -> Dict[str, float]:
-
-    rmse = np.sqrt(
-        mean_squared_error(
-            y_true,
-            y_pred
-        )
-    )
-
-    return {
-
-        "R2": float(
-            r2_score(
-                y_true,
-                y_pred
-            )
-        ),
-
-        "MAE": float(
-            mean_absolute_error(
-                y_true,
-                y_pred
-            )
-        ),
-
-        "RMSE": float(rmse),
-    }
-
-
-# ============================================================
-# MODEL CANDIDATES
-# ============================================================
-
-def get_model_candidates():
-
-    return {
-
-        "Extra Trees": (
-
-            ExtraTreesRegressor(
-                random_state=RANDOM_SEED,
-                n_jobs=-1
-            ),
-
-            {
-
-                "model__n_estimators": [
-                    300,
-                    500,
-                    800
-                ],
-
-                "model__max_depth": [
-                    None,
-                    8,
-                    12,
-                    20
-                ],
-
-                "model__min_samples_split": [
-                    2,
-                    3,
-                    5
-                ],
-
-                "model__min_samples_leaf": [
-                    1,
-                    2,
-                    4
-                ],
-
-                "model__max_features": [
-                    1.0,
-                    "sqrt",
-                    0.7
-                ],
-
-            }
-        ),
-
-        "Random Forest": (
-
-            RandomForestRegressor(
-                random_state=RANDOM_SEED,
-                n_jobs=-1
-            ),
-
-            {
-
-                "model__n_estimators": [
-                    300,
-                    500,
-                    800
-                ],
-
-                "model__max_depth": [
-                    None,
-                    8,
-                    12,
-                    20
-                ],
-
-                "model__min_samples_split": [
-                    2,
-                    4,
-                    6
-                ],
-
-                "model__min_samples_leaf": [
-                    1,
-                    2,
-                    4
-                ],
-
-                "model__max_features": [
-                    1.0,
-                    "sqrt",
-                    0.7
-                ],
-
-            }
-        ),
-
-        "Gradient Boosting": (
-
-            GradientBoostingRegressor(
-                random_state=RANDOM_SEED
-            ),
-
-            {
-
-                "model__n_estimators": [
-                    100,
-                    200,
-                    300
-                ],
-
-                "model__learning_rate": [
-                    0.02,
-                    0.05,
-                    0.08,
-                    0.1
-                ],
-
-                "model__max_depth": [
-                    2,
-                    3,
-                    4
-                ],
-
-                "model__min_samples_leaf": [
-                    1,
-                    2,
-                    4
-                ],
-
-                "model__subsample": [
-                    0.8,
-                    1.0
-                ],
-
-            }
-        ),
-
-        "HistGradient Boosting": (
-
-            HistGradientBoostingRegressor(
-                random_state=RANDOM_SEED
-            ),
-
-            {
-
-                "model__max_iter": [
-                    100,
-                    200,
-                    300
-                ],
-
-                "model__learning_rate": [
-                    0.03,
-                    0.05,
-                    0.1
-                ],
-
-                "model__max_leaf_nodes": [
-                    15,
-                    31,
-                    63
-                ],
-
-                "model__l2_regularization": [
-                    0.0,
-                    0.1,
-                    1.0
-                ],
-
-                "model__min_samples_leaf": [
-                    10,
-                    15,
-                    20
-                ],
-
-            }
-        ),
-
-        "Ridge": (
-
-            Ridge(),
-
-            {
-
-                "model__alpha": [
-                    0.01,
-                    0.1,
-                    1,
-                    10,
-                    100
-                ]
-
-            }
-        ),
-    }
-
-
-# ============================================================
-# PIPELINE
-# ============================================================
-
-def make_pipeline(model):
-
-    return Pipeline(
-
-        steps=[
-
-            (
-                "imputer",
-
-                SimpleImputer(
-                    strategy="median",
-                    add_indicator=True
-                )
-            ),
-
-            (
-                "scaler",
-
-                StandardScaler()
-            ),
-
-            (
-                "model",
-
-                model
-            ),
-
-        ]
-    )
-
-
-# ============================================================
-# MODEL FILES
-# ============================================================
-
-def model_file_for(target: str) -> Path:
-
-    safe_name = (
-        target
-        .replace(" ", "_")
-        .replace("/", "_")
-    )
-
-    return (
-        MODEL_DIR
-        / f"{safe_name}_bundle.joblib"
-    )
-
-
-def models_are_valid(
-    signature: str
-) -> bool:
-
-    if not META_FILE.exists():
-        return False
-
-    try:
-
-        with open(
-            META_FILE,
-            "r",
-            encoding="utf-8"
-        ) as f:
-
-            metadata = json.load(f)
-
-        if (
-            metadata.get(
-                "training_signature"
-            )
-            != signature
-        ):
-
-            return False
-
-        for target in TARGETS:
-
-            if not model_file_for(
-                target
-            ).exists():
-
-                return False
-
-        return True
-
-    except Exception:
-
-        return False
-
-
-def load_saved_models():
-
-    trained_models = {}
-
-    for target in TARGETS:
-
-        trained_models[target] = (
-            joblib.load(
-                model_file_for(
-                    target
-                )
-            )
-        )
-
-    return trained_models
-
-
-# ============================================================
-# TRAINING
-# ============================================================
-
-@st.cache_resource(
-    show_spinner=True
-)
-def train_all_models(
-    training_signature: str
-):
-
-    # --------------------------------------------------------
-    # LOAD EXISTING MODELS
-    # --------------------------------------------------------
-
-    if models_are_valid(
-        training_signature
-    ):
-
-        try:
-
-            return load_saved_models()
-
-        except Exception:
-
-            pass
-
-    # --------------------------------------------------------
-    # TRAINING
-    # --------------------------------------------------------
-
-    df = load_dataset()
-
-    trained_models = {}
-
-    for target in TARGETS:
-
-        X = df.drop(
-            columns=TARGETS
-        )
-
-        y = df[target]
-
-        valid = y.notna()
-
-        X = X.loc[
-            valid
-        ].copy()
-
-        y = y.loc[
-            valid
-        ].copy()
-
-        if len(y) < 15:
-
-            raise ValueError(
-                f"Not enough experimental "
-                f"observations for {target}."
-            )
-
-        # ----------------------------------------------------
-        # TEST SET
-        # ----------------------------------------------------
-
-        X_train, X_test, y_train, y_test = (
-            train_test_split(
-                X,
-                y,
-                test_size=TEST_SIZE,
-                random_state=RANDOM_SEED
-            )
-        )
-
-        # ----------------------------------------------------
-        # ADAPT CV TO DATA SIZE
-        # ----------------------------------------------------
-
-        n_splits = min(
-            CV_FOLDS,
-            len(y_train)
-        )
-
-        if n_splits < 2:
-
-            raise ValueError(
-                f"Not enough training observations "
-                f"for validation of {target}."
-            )
-
-        cv = RepeatedKFold(
-
-            n_splits=n_splits,
-
-            n_repeats=CV_REPEATS,
-
-            random_state=RANDOM_SEED
-        )
-
-        candidates = (
-            get_model_candidates()
-        )
-
-        best_pipeline = None
-
-        best_cv_score = -np.inf
-
-        best_model_name = None
-
-        # ----------------------------------------------------
-        # MODEL SELECTION
-        # ----------------------------------------------------
-
-        for model_name, (
-            model,
-            params
-        ) in candidates.items():
-
-            pipeline = (
-                make_pipeline(
-                    model
-                )
-            )
-
-            total_combinations = int(
-                np.prod(
-                    [
-                        len(v)
-                        for v in params.values()
-                    ]
-                )
-            )
-
-            n_iter = min(
-                15,
-                total_combinations
-            )
-
-            search = (
-                RandomizedSearchCV(
-
-                    estimator=pipeline,
-
-                    param_distributions=params,
-
-                    n_iter=n_iter,
-
-                    scoring="r2",
-
-                    cv=cv,
-
-                    random_state=RANDOM_SEED,
-
-                    n_jobs=-1,
-
-                    error_score=np.nan,
-
-                    refit=True
-                )
-            )
-
-            try:
-
-                search.fit(
-                    X_train,
-                    y_train
-                )
-
-                score = (
-                    search.best_score_
-                )
-
-                if (
-                    np.isfinite(score)
-                    and score > best_cv_score
-                ):
-
-                    best_cv_score = score
-
-                    best_pipeline = (
-                        search.best_estimator_
-                    )
-
-                    best_model_name = (
-                        model_name
-                    )
-
-            except Exception:
-
-                continue
-
-        # ----------------------------------------------------
-        # FALLBACK
-        # ----------------------------------------------------
-
-        if best_pipeline is None:
-
-            best_pipeline = (
-                make_pipeline(
-
-                    ExtraTreesRegressor(
-
-                        n_estimators=500,
-
-                        random_state=RANDOM_SEED,
-
-                        n_jobs=-1
-                    )
-                )
-            )
-
-            best_pipeline.fit(
-                X_train,
-                y_train
-            )
-
-            best_model_name = (
-                "Extra Trees"
-            )
-
-            best_cv_score = np.nan
-
-        # ----------------------------------------------------
-        # TEST PREDICTION
-        # ----------------------------------------------------
-
-        y_pred = (
-            best_pipeline.predict(
-                X_test
-            )
-        )
-
-        metrics = calculate_metrics(
-            y_test,
-            y_pred
-        )
-
-        metrics["CV R2"] = (
-            float(best_cv_score)
-            if np.isfinite(
-                best_cv_score
-            )
-            else np.nan
-        )
-
-        # ----------------------------------------------------
-        # FEATURE IMPORTANCE
-        # ----------------------------------------------------
-
-        try:
-
-            perm = (
-                permutation_importance(
-
-                    best_pipeline,
-
-                    X_train,
-
-                    y_train,
-
-                    scoring="r2",
-
-                    n_repeats=10,
-
-                    random_state=RANDOM_SEED,
-
-                    n_jobs=-1
-                )
-            )
-
-            importance = pd.DataFrame(
-
-                {
-
-                    "Feature":
-                        X_train.columns,
-
-                    "Importance":
-                        np.maximum(
-                            perm.importances_mean,
-                            0
-                        ),
-
-                }
-            )
-
-            total = (
-                importance[
-                    "Importance"
-                ].sum()
-            )
-
-            if total > 0:
-
-                importance[
-                    "Importance_%"
-                ] = (
-
-                    importance[
-                        "Importance"
-                    ]
-
-                    / total
-
-                    * 100
-
-                )
-
-            else:
-
-                importance[
-                    "Importance_%"
-                ] = 0.0
-
-            importance = (
-                importance
-                .sort_values(
-                    "Importance_%",
-                    ascending=False
-                )
-                .reset_index(
-                    drop=True
-                )
-            )
-
-        except Exception:
-
-            importance = pd.DataFrame(
-
-                columns=[
-
-                    "Feature",
-
-                    "Importance",
-
-                    "Importance_%"
-
-                ]
-            )
-
-        # ----------------------------------------------------
-        # STORE
-        # ----------------------------------------------------
-
-        trained_models[target] = {
-
-            "model":
-                best_pipeline,
-
-            "target":
-                target,
-
-            "features":
-                X.columns.tolist(),
-
-            "metrics":
-                metrics,
-
-            "importance":
-                importance,
-
-            "model_name":
-                best_model_name,
-
-            "X_test":
-                X_test,
-
-            "y_test":
-                y_test,
-
-            "y_pred":
-                y_pred,
-        }
-
-        # ----------------------------------------------------
-        # SAVE
-        # ----------------------------------------------------
-
-        joblib.dump(
-
-            trained_models[target],
-
-            model_file_for(
-                target
-            ),
-
-            compress=3
-        )
-
-    # --------------------------------------------------------
-    # SAVE METADATA
-    # --------------------------------------------------------
-
-    metadata = {
-
-        "training_signature":
-            training_signature,
-
-        "model_version":
-            MODEL_VERSION,
-
-        "targets":
-            TARGETS,
-
-    }
-
-    with open(
-        META_FILE,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        json.dump(
-            metadata,
-            f,
-            indent=4
-        )
-
-    return trained_models
-
-
-# ============================================================
-# PREDICTION
-# ============================================================
-
-def predict_cqas(
-    models,
-    inputs
-):
-
-    predictions = {}
-
-    for target in TARGETS:
-
-        value = (
-            models[target][
-                "model"
-            ]
-            .predict(inputs)[0]
-        )
-
-        predictions[target] = (
-            float(value)
-        )
-
-    return predictions
-
-
-# ============================================================
-# INPUT RANGES
-# ============================================================
-
-def get_input_ranges(df):
-
-    ranges = {}
-
-    for col in df.columns:
-
-        if col in TARGETS:
-            continue
-
-        series = (
-            pd.to_numeric(
-                df[col],
-                errors="coerce"
-            )
-            .dropna()
-        )
-
-        if len(series) == 0:
-            continue
-
-        ranges[col] = {
-
-            "min":
-                float(series.min()),
-
-            "max":
-                float(series.max()),
-
-            "p05":
-                float(
-                    series.quantile(
-                        OPT_LOW_PERCENTILE
-                        / 100
-                    )
-                ),
-
-            "p95":
-                float(
-                    series.quantile(
-                        OPT_HIGH_PERCENTILE
-                        / 100
-                    )
-                ),
-
-            "unique":
-                int(
-                    series.nunique()
-                ),
-
-            "values":
-                sorted(
-                    series.unique()
-                    .tolist()
-                ),
-        }
-
-    return ranges
-
-
-# ============================================================
-# FEATURE CLASSIFICATION
-# ============================================================
-
-def classify_features(
-    input_columns
-):
-
-    physicochemical_keywords = [
-
-        "Weight",
-        "Density",
-        "Index",
-        "Ratio",
-        "Repose",
-        "Thickness",
-        "Molecular",
-        "XLogP3",
-        "Hydrogen",
-        "Rotational",
-        "Topological",
-        "Heavy",
-        "Complexity",
-        "LogS",
-        "DOSE",
-        "Wetting",
-        "Flow",
-        "Compressibility",
-        "Porosity",
-        "Moisture",
-        "Particle",
-        "Size",
-    ]
-
-    phys_cols = []
-
-    excipient_cols = []
-
-    for col in input_columns:
-
-        if any(
-
-            kw.lower()
-            in col.lower()
-
-            for kw in
-            physicochemical_keywords
-
-        ):
-
-            phys_cols.append(
-                col
-            )
-
-        else:
-
-            excipient_cols.append(
-                col
-            )
-
-    return (
-        phys_cols,
-        excipient_cols
-    )
-
-
-# ============================================================
-# DESIRABILITY
-# ============================================================
-
-def desirability(
-    value,
-    goal,
-    low,
-    high,
-    target=None
-):
-
-    if not np.isfinite(value):
-        return 0.0
-
-    if high <= low:
-        return 0.0
-
-    if goal == "Minimize":
-
-        if value <= low:
-            return 1.0
-
-        if value >= high:
-            return 0.0
-
-        return (
-            high - value
-        ) / (
-            high - low
-        )
-
-    if goal == "Maximize":
-
-        if value >= high:
-            return 1.0
-
-        if value <= low:
-            return 0.0
-
-        return (
-            value - low
-        ) / (
-            high - low
-        )
-
-    target = float(
-
-        np.clip(
-
-            target
-            if target is not None
-            else (low + high) / 2,
-
-            low,
-
-            high
-
-        )
-    )
-
-    if value == target:
-        return 1.0
-
-    if value < target:
-
-        if target == low:
-            return 0.0
-
-        return max(
-
-            0.0,
-
-            (
-                value - low
-            )
-            /
-            (
-                target - low
-            )
-
-        )
-
-    if high == target:
-        return 0.0
-
-    return max(
-
-        0.0,
-
-        (
-            high - value
-        )
-        /
-        (
-            high - target
-        )
-
-    )
-
-
-def overall_desirability(
-    predictions,
-    goals,
-    df
-):
-
-    values = []
-
-    for target in TARGETS:
-
-        series = (
-            df[target]
-            .dropna()
-        )
-
-        if len(series) == 0:
-            continue
-
-        score = desirability(
-
-            predictions[target],
-
-            goals[target]["goal"],
-
-            float(series.min()),
-
-            float(series.max()),
-
-            goals[target].get(
-                "target"
-            )
-
-        )
-
-        values.append(
-            np.clip(
-                score,
-                0,
-                1
-            )
-        )
-
-    if not values:
-        return 0.0
-
-    return float(
-
-        np.prod(values)
-        **
-        (
-            1 / len(values)
-        )
-
-    )
-
-
-# ============================================================
-# OPTIMIZATION VARIABLE SELECTION
-# ============================================================
-
-def select_optimization_variables(
-    models
-):
-
-    score_map = {}
-
-    for target in TARGETS:
-
-        importance = (
-            models[target][
-                "importance"
-            ]
-        )
-
-        for _, row in (
-            importance.iterrows()
-        ):
-
-            feature = row[
-                "Feature"
-            ]
-
-            score_map[feature] = (
-
-                score_map.get(
-                    feature,
-                    0
-                )
-
-                +
-
-                float(
-                    row[
-                        "Importance_%"
-                    ]
-                )
-
-            )
-
-    ranked = sorted(
-
-        score_map.items(),
-
-        key=lambda x: x[1],
-
-        reverse=True
-
-    )
-
-    return [
-
-        feature
-
-        for feature, _ in
-        ranked[
-            :MAX_OPT_VARS
-        ]
-
-    ]
-
-
-# ============================================================
-# OPTIMIZATION
-# ============================================================
-
-def optimize_formulation(
-    df,
-    models,
-    baseline_inputs,
-    goals
-):
-
-    ranges = (
-        get_input_ranges(
-            df
-        )
-    )
-
-    selected = [
-
-        x
-
-        for x in
-        select_optimization_variables(
-            models
-        )
-
-        if x in ranges
-
-    ]
-
-    if not selected:
-
-        return (
-
-            baseline_inputs.copy(),
-
-            {},
-
-            0.0
-
-        )
-
-    base = (
-        baseline_inputs.copy()
-    )
-
-    bounds = []
-
-    for feature in selected:
-
-        info = ranges[
-            feature
-        ]
-
-        low = info["p05"]
-
-        high = info["p95"]
-
-        if low >= high:
-
-            low = info["min"]
-
-            high = info["max"]
-
-        bounds.append(
-            (
-                low,
-                high
-            )
-        )
-
-    discrete = {
-
-        feature:
-            ranges[feature][
-                "values"
-            ]
-
-        for feature in selected
-
-        if ranges[feature][
-            "unique"
-        ] <= 10
-
-    }
-
-    reference_X = (
-        df[
-            [
-                f
-                for f in selected
-                if f in df.columns
-            ]
-        ]
-        .dropna()
-    )
-
-    def objective(vals):
-
-        candidate = (
-            base.copy()
-        )
-
-        for feature, value in zip(
-            selected,
-            vals
-        ):
-
-            if feature in discrete:
-
-                arr = np.asarray(
-
-                    discrete[
-                        feature
-                    ],
-
-                    dtype=float
-
-                )
-
-                value = float(
-
-                    arr[
-                        np.argmin(
-                            np.abs(
-                                arr - value
-                            )
-                        )
-                    ]
-
-                )
-
-            candidate[
-                feature
-            ] = value
-
-        predictions = (
-            predict_cqas(
-                models,
-                candidate
-            )
-        )
-
-        desirability_score = (
-            overall_desirability(
-
-                predictions,
-
-                goals,
-
-                df
-
-            )
-        )
-
-        penalty = 0.0
-
-        if len(reference_X) > 0:
-
-            candidate_values = (
-
-                candidate[
-                    selected
-                ]
-                .astype(float)
-                .iloc[0]
-                .values
-
-            )
-
-            ref_values = (
-
-                reference_X
-                .astype(float)
-                .values
-
-            )
-
-            scale = (
-
-                np.nanstd(
-                    ref_values,
-                    axis=0
-                )
-
-                + 1e-9
-
-            )
-
-            distances = np.sqrt(
-
-                np.nanmean(
-
-                    (
-
-                        (
-                            ref_values
-                            -
-                            candidate_values
-                        )
-
-                        /
-
-                        scale
-
-                    )
-
-                    ** 2,
-
-                    axis=1
-
-                )
-
-            )
-
-            nearest_distance = float(
-
-                np.min(
-                    distances
-                )
-            )
-
-            penalty = (
-
-                0.03
-
-                *
-
-                max(
-
-                    0.0,
-
-                    nearest_distance
-                    - 2.0
-
-                )
-
-            )
-
-        return -(
-
-            desirability_score
-            - penalty
-
-        )
-
-    # --------------------------------------------------------
-    # FASTER DIFFERENTIAL EVOLUTION
-    # --------------------------------------------------------
-
-    result = (
-        differential_evolution(
-
-            objective,
-
-            bounds=bounds,
-
-            seed=RANDOM_SEED,
-
-            # Reduced from 80
-            maxiter=30,
-
-            # Reduced from 10
-            popsize=6,
-
-            # Relaxed from 1e-7
-            tol=1e-4,
-
-            mutation=(0.5, 1.0),
-
-            recombination=0.7,
-
-            polish=True,
-
-            workers=1
-
-        )
-    )
-
-    opt_inputs = (
-        base.copy()
-    )
-
-    for feature, value in zip(
-        selected,
-        result.x
-    ):
-
-        if feature in discrete:
-
-            arr = np.asarray(
-
-                discrete[
-                    feature
-                ],
-
-                dtype=float
-
-            )
-
-            value = float(
-
-                arr[
-                    np.argmin(
-                        np.abs(
-                            arr - value
-                        )
-                    )
-                ]
-
-            )
-
-        opt_inputs[
-            feature
-        ] = value
-
-    opt_predictions = (
-        predict_cqas(
-            models,
-            opt_inputs
-        )
-    )
-
-    final_desirability = (
-        overall_desirability(
-
-            opt_predictions,
-
-            goals,
-
-            df
-
-        )
-    )
-
-    return (
-
-        opt_inputs,
-
-        opt_predictions,
-
-        final_desirability
-
-    )
-
-
-# ============================================================
-# APPLICATION INITIALIZATION
-# ============================================================
-
-try:
-
-    dataset_path = (
-        get_dataset_path()
-    )
-
-    training_signature = (
-        get_training_signature(
-            dataset_path
-        )
-    )
-
-    df = load_dataset()
-
-    models = train_all_models(
-        training_signature
-    )
-
-except Exception as e:
-
-    st.error(
-        "⚠️ The application could not initialize. "
-        f"Error: {e}"
-    )
-
+missing_targets = [t for t in TARGETS if t not in df_raw.columns]
+if missing_targets:
+    st.error("⚠️ Missing required quality attributes: " + ", ".join(missing_targets))
+    st.stop()
+
+numeric_cols = [c for c in df_raw.columns if pd.api.types.is_numeric_dtype(df_raw[c])]
+ALL_FEATURES = [c for c in numeric_cols if c not in TARGETS]
+ALL_FEATURES = [f for f in ALL_FEATURES if df_raw[f].nunique(dropna=True) > 1 and df_raw[f].notna().sum() > 5]
+
+# Define known lists to separate the parameters
+API_PHYSICAL_PROPS_LIST = [
+    # Original API Properties
+    'Molecular Weight', 'XLogP3-AA', 'Hydrogen Bond Donor Count', 
+    'Hydrogen Bond Acceptor Count', 'Rotational bond count', 
+    'Topological surface area', 'Heavy atom count', 'Complexity', 'LogS', 'DOSE',
+    # Original Physical Parameters
+    'Weight(mg)', 'Bulk Density', 'Tapped Density', 'Carrs Compressibility Index', 
+    'Hausner Ratio', 'Angle of Repose', 'Thickness', 'Wetting time'
+]
+
+api_physical_features = [f for f in ALL_FEATURES if f in API_PHYSICAL_PROPS_LIST]
+excipient_features = [f for f in ALL_FEATURES if f not in API_PHYSICAL_PROPS_LIST]
+
+FEATURES = api_physical_features + excipient_features
+
+df = df_raw[FEATURES + TARGETS].copy()
+df = df.replace([np.inf, -np.inf], np.nan)
+df = df.dropna(subset=TARGETS)
+
+if len(FEATURES) == 0:
+    st.error("⚠️ No valid formulation features detected.")
     st.stop()
 
 
-input_columns = [
+# ============================================================
+# 📝 DATA SIGNATURE & CACHING
+# ============================================================
 
-    c
+def dataframe_signature(dataframe: pd.DataFrame) -> str:
+    raw = pd.util.hash_pandas_object(dataframe, index=True).values.tobytes()
+    return hashlib.md5(raw).hexdigest()
 
-    for c in df.columns
+DATA_SIGNATURE = dataframe_signature(df[FEATURES + TARGETS])
 
-    if c not in TARGETS
+def save_models(models_payload, signature, features, targets):
+    payload = {
+        "signature": signature,
+        "features": list(features),
+        "targets": list(targets),
+        "models": models_payload,
+        "created": datetime.now().isoformat()
+    }
+    temp_file = MODEL_FILE.with_suffix(".tmp")
+    try:
+        joblib.dump(payload, temp_file, compress=3)
+        temp_file.replace(MODEL_FILE)
+        return True
+    except Exception:
+        return False
 
-]
-
-input_ranges = (
-    get_input_ranges(
-        df
-    )
-)
-
-phys_cols, excipient_cols = (
-    classify_features(
-        input_columns
-    )
-)
+def load_models(signature, features, targets):
+    if not MODEL_FILE.exists():
+        return None
+    try:
+        payload = joblib.load(MODEL_FILE)
+        if not isinstance(payload, dict):
+            return None
+        if payload.get("signature") != signature: return None
+        if payload.get("features") != list(features): return None
+        if payload.get("targets") != list(targets): return None
+        
+        models = payload.get("models")
+        if isinstance(models, dict):
+            for t in targets:
+                if t not in models or not hasattr(models[t], "predict"):
+                    return None
+        return models
+    except Exception:
+        return None
 
 
 # ============================================================
-# HEADER
+# ⚙️ PIPELINE BUILDER & TRAINING ENGINE
 # ============================================================
 
-st.markdown(
-
-    '<div class="main-title">'
-    '🧪 Virtual Formulation Lab'
-    '</div>',
-
-    unsafe_allow_html=True
-
-)
-
-st.markdown(
-
-    '<div class="subtitle">'
-    'AI-Assisted Pharmaceutical Formulation '
-    '& Quality Prediction Platform'
-    '</div>',
-
-    unsafe_allow_html=True
-
-)
-
-
-# ============================================================
-# MAIN TABS
-# ============================================================
-
-tab_lab, tab_optimizer, tab_validation = (
-    st.tabs(
-        [
-            "🧪 Virtual Lab",
-            "🎯 Optimization",
-            "✅ Validation",
-        ]
-    )
-)
-
-
-# ============================================================
-# TAB 1 — VIRTUAL LAB
-# ============================================================
-
-with tab_lab:
-
-    st.markdown(
-
-        '<div class="section-title">'
-        'Formulation Setup'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    formulation_name = st.text_input(
-
-        "Formulation Batch Code",
-
-        value="Batch_01"
-
-    )
-
-    st.markdown(
-
-        '<div class="info-box">'
-        'Enter the formulation and powder properties. '
-        'The system will predict the expected Critical '
-        'Quality Attributes (CQAs).'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    values = {}
-
-    # --------------------------------------------------------
-    # PHYSICOCHEMICAL
-    # --------------------------------------------------------
-
-    with st.expander(
-
-        "⚙️ Physicochemical & Powder Properties",
-
-        expanded=True
-
-    ):
-
-        if phys_cols:
-
-            for start in range(
-
-                0,
-
-                len(phys_cols),
-
-                3
-
-            ):
-
-                cols = st.columns(3)
-
-                for col_idx, feature in enumerate(
-
-                    phys_cols[
-                        start:start + 3
-                    ]
-
-                ):
-
-                    info = input_ranges[
-                        feature
-                    ]
-
-                    min_v = info[
-                        "min"
-                    ]
-
-                    max_v = info[
-                        "max"
-                    ]
-
-                    with cols[
-                        col_idx
-                    ]:
-
-                        if min_v == max_v:
-
-                            values[
-                                feature
-                            ] = min_v
-
-                            st.number_input(
-
-                                f"{feature} (Fixed)",
-
-                                value=float(
-                                    min_v
-                                ),
-
-                                disabled=True,
-
-                                key=f"inp_{feature}"
-
-                            )
-
-                        elif info[
-                            "unique"
-                        ] <= 10:
-
-                            values[
-                                feature
-                            ] = (
-
-                                st.selectbox(
-
-                                    feature,
-
-                                    options=info[
-                                        "values"
-                                    ],
-
-                                    key=f"inp_{feature}"
-
-                                )
-
-                            )
-
-                        else:
-
-                            values[
-                                feature
-                            ] = (
-
-                                st.number_input(
-
-                                    feature,
-
-                                    min_value=float(
-                                        min_v
-                                    ),
-
-                                    max_value=float(
-                                        max_v
-                                    ),
-
-                                    value=float(
-
-                                        (
-                                            min_v
-                                            +
-                                            max_v
-                                        )
-                                        / 2
-
-                                    ),
-
-                                    format="%.4f",
-
-                                    key=f"inp_{feature}"
-
-                                )
-
-                            )
-
-    # --------------------------------------------------------
-    # EXCIPIENTS
-    # --------------------------------------------------------
-
-    with st.expander(
-
-        "💊 Excipients Composition",
-
-        expanded=False
-
-    ):
-
-        if excipient_cols:
-
-            for start in range(
-
-                0,
-
-                len(excipient_cols),
-
-                3
-
-            ):
-
-                cols = st.columns(3)
-
-                for col_idx, feature in enumerate(
-
-                    excipient_cols[
-                        start:start + 3
-                    ]
-
-                ):
-
-                    info = input_ranges[
-                        feature
-                    ]
-
-                    min_v = info[
-                        "min"
-                    ]
-
-                    max_v = info[
-                        "max"
-                    ]
-
-                    with cols[
-                        col_idx
-                    ]:
-
-                        if min_v == max_v:
-
-                            values[
-                                feature
-                            ] = min_v
-
-                            st.number_input(
-
-                                f"{feature} (Fixed)",
-
-                                value=float(
-                                    min_v
-                                ),
-
-                                disabled=True,
-
-                                key=f"exc_{feature}"
-
-                            )
-
-                        elif info[
-                            "unique"
-                        ] <= 10:
-
-                            values[
-                                feature
-                            ] = (
-
-                                st.selectbox(
-
-                                    feature,
-
-                                    options=info[
-                                        "values"
-                                    ],
-
-                                    key=f"exc_{feature}"
-
-                                )
-
-                            )
-
-                        else:
-
-                            values[
-                                feature
-                            ] = (
-
-                                st.number_input(
-
-                                    feature,
-
-                                    min_value=float(
-                                        min_v
-                                    ),
-
-                                    max_value=float(
-                                        max_v
-                                    ),
-
-                                    value=float(
-                                        min_v
-                                    ),
-
-                                    format="%.4f",
-
-                                    key=f"exc_{feature}"
-
-                                )
-
-                            )
-
-    # --------------------------------------------------------
-    # PREDICTION
-    # --------------------------------------------------------
-
-    if st.button(
-
-        "🔬 Predict CQAs",
-
-        type="primary",
-
-        use_container_width=True
-
-    ):
-
-        baseline_inputs = pd.DataFrame(
-
-            [values],
-
-            columns=input_columns
-
-        )
-
-        predictions = (
-            predict_cqas(
-
-                models,
-
-                baseline_inputs
-
-            )
-        )
-
-        st.session_state[
-            "baseline_inputs"
-        ] = baseline_inputs
-
-        st.session_state[
-            "predictions"
-        ] = predictions
-
-        st.session_state.pop(
-            "opt_preds",
-            None
-        )
-
-        st.session_state.pop(
-            "opt_inputs",
-            None
-        )
-
-    # --------------------------------------------------------
-    # RESULTS
-    # --------------------------------------------------------
-
-    if (
-        "predictions"
-        in st.session_state
-    ):
-
-        st.markdown(
-
-            '<div class="section-title">'
-            'Predicted CQAs'
-            '</div>',
-
-            unsafe_allow_html=True
-
-        )
-
-        res_cols = st.columns(
-            len(TARGETS)
-        )
-
-        for i, target in enumerate(
-            TARGETS
-        ):
-
-            value = (
-                st.session_state[
-                    "predictions"
-                ][target]
-            )
-
-            with res_cols[i]:
-
-                st.markdown(
-
-                    f"""
-                    <div class="result-card">
-                        <div class="result-label">
-                            {target}
-                        </div>
-                        <div class="result-value">
-                            {value:.3f}
-                        </div>
-                    </div>
-                    """,
-
-                    unsafe_allow_html=True
-
-                )
-
-        st.markdown(
-            "<br>",
-            unsafe_allow_html=True
-        )
-
-        # ----------------------------------------------------
-        # DOWNLOAD PREDICTIONS
-        # ----------------------------------------------------
-
-        pred_export_df = pd.DataFrame(
-            [
-                st.session_state[
-                    "predictions"
-                ]
-            ]
-        )
-
-        pred_export_df.insert(
-            0,
-            "Batch_Code",
-            formulation_name
-        )
-
-        csv_data = (
-            pred_export_df
-            .to_csv(
-                index=False
-            )
-            .encode("utf-8")
-        )
-
-        st.download_button(
-
-            label="📥 Download Predicted CQAs (CSV)",
-
-            data=csv_data,
-
-            file_name=(
-                f"{formulation_name}"
-                f"_predictions.csv"
-            ),
-
-            mime="text/csv",
-
-            use_container_width=True
-
-        )
+def build_pipeline(model_name, model):
+    tree_models = {"XGBoost", "LightGBM", "Random Forest", "Extra Trees", "Gradient Boosting"}
+    if model_name in tree_models:
+        return Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("model", model)
+        ])
+    return Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", PowerTransformer(method="yeo-johnson")),
+        ("model", model)
+    ])
+
+@st.cache_resource
+def train_models(signature, features_tuple, targets_tuple):
+    features = list(features_tuple)
+    targets = list(targets_tuple)
+
+    saved = load_models(signature, features, targets)
+    if saved is not None:
+        return saved
+
+    local_df = df[features + targets].copy()
+    X_all = local_df[features]
+    models_payload = {}
+
+    for target in targets:
+        y_all = local_df[target]
+        if len(y_all) < 5: 
+            continue
+
+        X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=TEST_SIZE, random_state=RANDOM_SEED)
+        
+        best_pipeline = None
+        best_score = -np.inf
+
+        candidate_models = {
+            "Random Forest": RandomForestRegressor(random_state=RANDOM_SEED, n_jobs=-1),
+            "XGBoost": XGBRegressor(objective="reg:squarederror", random_state=RANDOM_SEED, n_jobs=-1, verbosity=0),
+            "Extra Trees": ExtraTreesRegressor(random_state=RANDOM_SEED, n_jobs=-1),
+            "Ridge": Ridge(random_state=RANDOM_SEED)
+        }
+
+        for name, model_obj in candidate_models.items():
+            try:
+                pipeline = build_pipeline(name, model_obj)
+                pipeline.fit(X_train, y_train)
+                score = pipeline.score(X_test, y_test)
+                if score > best_score:
+                    best_score = score
+                    best_pipeline = pipeline
+            except Exception:
+                continue
+
+        if best_pipeline is None:
+            try:
+                fallback_pipeline = Pipeline([
+                    ("imputer", SimpleImputer(strategy="median")),
+                    ("model", Ridge())
+                ])
+                fallback_pipeline.fit(X_train, y_train)
+                best_pipeline = fallback_pipeline
+            except Exception:
+                continue
+
+        if best_pipeline is not None:
+            models_payload[target] = best_pipeline
+
+    save_models(models_payload, signature, features, targets)
+    return models_payload
+
+trained_models = train_models(DATA_SIGNATURE, tuple(FEATURES), tuple(TARGETS))
 
 
 # ============================================================
-# TAB 2 — OPTIMIZATION
+# 🔑 FEATURE IMPORTANCE EXTRACTION
 # ============================================================
 
-with tab_optimizer:
-
-    st.markdown(
-
-        '<div class="section-title">'
-        'CQA Optimization Targets'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    goals = {}
-
-    goal_cols = st.columns(2)
-
-    for i, target in enumerate(
-        TARGETS
-    ):
-
-        with goal_cols[
-            i % 2
-        ]:
-
-            goal = st.selectbox(
-
-                f"{target}",
-
-                [
-                    "Target",
-                    "Minimize",
-                    "Maximize"
-                ],
-
-                key=f"goal_{target}"
-
-            )
-
-            target_value = None
-
-            if goal == "Target":
-
-                series = (
-                    df[target]
-                    .dropna()
-                )
-
-                target_value = (
-                    st.number_input(
-
-                        f"Desired {target}",
-
-                        min_value=float(
-                            series.min()
-                        ),
-
-                        max_value=float(
-                            series.max()
-                        ),
-
-                        value=float(
-                            series.median()
-                        ),
-
-                        key=f"target_{target}"
-
-                    )
-                )
-
-            goals[target] = {
-
-                "goal":
-                    goal,
-
-                "target":
-                    target_value
-
-            }
-
-    if st.button(
-
-        "🚀 Optimize Formulation",
-
-        type="primary",
-
-        use_container_width=True
-
-    ):
-
-        if (
-            "baseline_inputs"
-            not in st.session_state
-        ):
-
-            st.warning(
-
-                "Please predict the current "
-                "formulation first."
-
-            )
-
+def get_feature_importance(model_pipeline, feature_names):
+    """Extract feature importance from model pipeline."""
+    try:
+        # Try to get the underlying model
+        model = model_pipeline.named_steps.get('model')
+        if model is None:
+            return None
+        
+        # Check if model has feature_importances_ attribute
+        if hasattr(model, 'feature_importances_'):
+            importance = model.feature_importances_
+            return dict(zip(feature_names, importance))
+        # Check if model has coef_ attribute (linear models)
+        elif hasattr(model, 'coef_'):
+            importance = np.abs(model.coef_)
+            # If coef_ is 2D (for multi-output), take mean across outputs
+            if importance.ndim > 1:
+                importance = importance.mean(axis=0)
+            return dict(zip(feature_names, importance))
         else:
+            return None
+    except Exception as e:
+        return None
 
-            with st.spinner(
+# IMPORTANT: Added underscore to '_models' to prevent hashing
+@st.cache_data
+def compute_feature_importance(_models, features, targets):
+    """Compute feature importance for all trained models."""
+    importance_dict = {}
+    
+    for target in targets:
+        if target not in _models:
+            continue
+        
+        model_pipeline = _models[target]
+        importance = get_feature_importance(model_pipeline, features)
+        
+        if importance is not None:
+            # Normalize to percentages
+            total = sum(importance.values())
+            if total > 0:
+                importance_dict[target] = {
+                    feat: (val / total) * 100 
+                    for feat, val in importance.items()
+                }
+    
+    return importance_dict
 
-                "Searching for the best formulation..."
+# Compute feature importance - note the underscore in the function call
+feature_importance_data = compute_feature_importance(trained_models, FEATURES, TARGETS)
 
-            ):
 
-                (
+# ============================================================
+# 🖥️ MAIN INTERFACE
+# ============================================================
 
-                    opt_inputs,
+# ===== HEADER =====
+st.markdown('<div class="main-title">🧪 Virtual Formulation Lab</div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="subtitle">
+    <span>AI-Powered Pharmaceutical Excipient Optimization</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span class="subtitle-status">System Ready</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-                    opt_predictions,
+# ===== TABS =====
+tab1, tab2, tab3 = st.tabs(["🎯 Prediction Results", "📈 Model Performance", "⚙️ Excipient Optimizer"])
 
-                    desirability_score
+# ============================================================
+# TAB 1: PREDICTION RESULTS
+# ============================================================
 
-                ) = optimize_formulation(
-
-                    df,
-
-                    models,
-
-                    st.session_state[
-                        "baseline_inputs"
-                    ],
-
-                    goals
-
-                )
-
-            st.session_state[
-                "opt_inputs"
-            ] = opt_inputs
-
-            st.session_state[
-                "opt_preds"
-            ] = opt_predictions
-
-            st.session_state[
-                "opt_des"
-            ] = desirability_score
-
-    # --------------------------------------------------------
-    # RESULTS
-    # --------------------------------------------------------
-
-    if (
-        "opt_preds"
-        in st.session_state
-    ):
-
-        st.markdown(
-
-            '<div class="section-title">'
-            'Recommended Formulation'
-            '</div>',
-
-            unsafe_allow_html=True
-
-        )
-
-        opt_inputs = (
-            st.session_state[
-                "opt_inputs"
-            ]
-        )
-
-        formulation_table = pd.DataFrame(
-
-            {
-
-                "Component":
-                    input_columns,
-
-                "Recommended Value": [
-
-                    float(
-
-                        opt_inputs.iloc[
-                            0
-                        ][col]
-
+with tab1:
+    st.markdown('<div class="section-header">📊 Predicted Quality Attributes</div>', unsafe_allow_html=True)
+    
+    input_data = {}
+    
+    # Create expandable section for API & Physical Properties
+    with st.expander("🔬 API & Physical Properties", expanded=False):
+        st.markdown("""
+        <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;">
+            Adjust the API and physical property parameters below
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if api_physical_features:
+            cols = st.columns(3)
+            for idx, feat in enumerate(api_physical_features):
+                with cols[idx % 3]:
+                    min_val = float(df[feat].min())
+                    max_val = float(df[feat].max())
+                    mean_val = float(df[feat].mean())
+                    input_data[feat] = st.number_input(
+                        feat, 
+                        min_value=min_val, 
+                        max_value=max_val, 
+                        value=mean_val, 
+                        key=f"api_{feat}",
+                        format="%.3f"
                     )
-
-                    for col
-                    in input_columns
-
-                ],
-
-            }
-        )
-
-        st.dataframe(
-
-            formulation_table,
-
-            use_container_width=True,
-
-            hide_index=True
-
-        )
-
-        st.markdown(
-
-            '<div class="section-title">'
-            'Predicted CQAs After Optimization'
-            '</div>',
-
-            unsafe_allow_html=True
-
-        )
-
-        comparison = pd.DataFrame(
-
-            {
-
-                "CQA":
-                    TARGETS,
-
-                "Current Prediction": [
-
-                    st.session_state[
-                        "predictions"
-                    ][t]
-
-                    for t in TARGETS
-
-                ],
-
-                "Optimized Prediction": [
-
-                    st.session_state[
-                        "opt_preds"
-                    ][t]
-
-                    for t in TARGETS
-
-                ],
-
-            }
-        )
-
-        st.dataframe(
-
-            comparison,
-
-            use_container_width=True,
-
-            hide_index=True
-
-        )
-
-        st.metric(
-
-            "Overall Desirability",
-
-            f"{st.session_state['opt_des']:.3f}"
-
-        )
-
-        st.markdown(
-            "<br>",
-            unsafe_allow_html=True
-        )
-
-        # ----------------------------------------------------
-        # DOWNLOAD OPTIMIZED FORMULATION
-        # ----------------------------------------------------
-
-        csv_opt_data = (
-            formulation_table
-            .to_csv(
-                index=False
-            )
-            .encode("utf-8")
-        )
-
-        st.download_button(
-
-            label=(
-                "📥 Download Recommended "
-                "Formulation (CSV)"
-            ),
-
-            data=csv_opt_data,
-
-            file_name=(
-                f"{formulation_name}"
-                f"_optimized_formulation.csv"
-            ),
-
-            mime="text/csv",
-
-            use_container_width=True
-
-        )
-
+    
+    # Create expandable section for Excipients
+    with st.expander("💊 Excipients", expanded=False):
+        st.markdown("""
+        <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;">
+            Adjust the excipient formulation parameters below
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if excipient_features:
+            cols = st.columns(3)
+            for idx, feat in enumerate(excipient_features):
+                with cols[idx % 3]:
+                    min_val = float(df[feat].min())
+                    max_val = float(df[feat].max())
+                    mean_val = float(df[feat].mean())
+                    input_data[feat] = st.number_input(
+                        feat, 
+                        min_value=min_val, 
+                        max_value=max_val, 
+                        value=mean_val, 
+                        key=f"excipient_{feat}",
+                        format="%.3f"
+                    )
+    
+    # Predict button
+    predict_clicked = st.button("🔮 Predict Quality Attributes", key="predict_btn", use_container_width=False)
+    
+    # Generate ordered input dataframe matching FEATURES order
+    ordered_input = {feat: input_data[feat] for feat in FEATURES if feat in input_data}
+    input_df = pd.DataFrame([ordered_input])
+    
+    # Display prediction results
+    if predict_clicked:
+        cols = st.columns(len(TARGETS))
+    
+        for idx, target in enumerate(TARGETS):
+            with cols[idx]:
+                if isinstance(trained_models, dict) and target in trained_models and hasattr(trained_models[target], "predict"):
+                    try:
+                        pred_val = float(trained_models[target].predict(input_df)[0])
+                        st.markdown(
+                            f"""
+                            <div class="result-card">
+                                <div class="result-label">{target}</div>
+                                <div class="result-value">{pred_val:.3f}</div>
+                                <div class="result-unit">predicted value</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    except Exception as e:
+                        st.warning(f"Error predicting {target}: {str(e)}")
+                else:
+                    st.warning(f"Model for {target} not available.")
+        
+        st.markdown("""
+        <div class="success-box">
+            ✅ This formulation is within the model's observed data domain.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Show message when no prediction has been made yet
+        st.info("👆 Click the 'Predict Quality Attributes' button above to see the predicted values for your formulation.")
 
 # ============================================================
-# TAB 3 — VALIDATION
+# TAB 2: MODEL PERFORMANCE
 # ============================================================
 
-with tab_validation:
-
-    st.markdown(
-
-        '<div class="section-title">'
-        'Model Validation'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    st.markdown(
-
-        '<div class="info-box">'
-        'Validation results are calculated on experimental '
-        'observations kept separate from model training.'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    validation_data = []
-
+with tab2:
+    st.markdown('<div class="section-header">📈 Model Evaluation & Diagnostics</div>', unsafe_allow_html=True)
+    
+    X_all = df[FEATURES]
+    perf_records = []
+    
     for target in TARGETS:
-
-        metrics = (
-            models[target][
-                "metrics"
-            ]
+        if isinstance(trained_models, dict) and target in trained_models:
+            try:
+                y_all = df[target]
+                model = trained_models[target]
+                preds = model.predict(X_all)
+                r2 = r2_score(y_all, preds)
+                rmse = np.sqrt(mean_squared_error(y_all, preds))
+                mae = mean_absolute_error(y_all, preds)
+                perf_records.append({
+                    "Target Quality Attribute": target,
+                    "R² Score": round(r2, 3),
+                    "RMSE": round(rmse, 3),
+                    "MAE": round(mae, 3)
+                })
+            except Exception:
+                continue
+            
+    if perf_records:
+        perf_df = pd.DataFrame(perf_records)
+        st.dataframe(perf_df, use_container_width=True, hide_index=True)
+        
+        # Add summary metrics
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            avg_r2 = perf_df["R² Score"].mean()
+            st.metric("Average R² Score", f"{avg_r2:.3f}", delta=None)
+        with col2:
+            avg_rmse = perf_df["RMSE"].mean()
+            st.metric("Average RMSE", f"{avg_rmse:.3f}", delta=None)
+        with col3:
+            avg_mae = perf_df["MAE"].mean()
+            st.metric("Average MAE", f"{avg_mae:.3f}", delta=None)
+    else:
+        st.info("No performance metrics available.")
+    
+    # ============================================================
+    # 📊 KEY FORMULATION FACTORS (Feature Importance)
+    # ============================================================
+    
+    st.markdown("---")
+    st.markdown('<div class="section-header">🔑 Key Formulation Factors</div>', unsafe_allow_html=True)
+    
+    if feature_importance_data:
+        # Select target to display feature importance for
+        selected_target_for_importance = st.selectbox(
+            "Select CQA (Critical Quality Attribute)",
+            options=[t for t in TARGETS if t in feature_importance_data],
+            key="importance_target_select",
+            help="Choose a quality attribute to see which formulation factors most influence it."
         )
+        
+        if selected_target_for_importance in feature_importance_data:
+            importance_dict = feature_importance_data[selected_target_for_importance]
+            
+            # Display as a styled header
+            st.markdown(f"""
+            <div style="background:#f8fafc;border-radius:12px;padding:0.5rem 1rem;margin-bottom:1rem;border:1px solid #e2e8f0;">
+                <span style="font-weight:600;color:#0f172a;">Key Factors Affecting {selected_target_for_importance}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Create dataframe for plotting
+            all_importance_df = pd.DataFrame(
+                sorted(importance_dict.items(), key=lambda x: x[1], reverse=True),
+                columns=["Feature", "Importance_%"]
+            )
+            
+            # Plot with Plotly (only the chart, no table or progress bars)
+            fig = px.bar(
+                all_importance_df.head(15),
+                x="Importance_%",
+                y="Feature",
+                orientation='h',
+                title=f"Top 15 Factors Affecting {selected_target_for_importance}",
+                color="Importance_%",
+                color_continuous_scale="Blues",
+                text="Importance_%"
+            )
+            fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+            fig.update_layout(
+                height=450,
+                margin=dict(l=0, r=0, t=40, b=0),
+                xaxis_title="Importance (%)",
+                yaxis_title=None,
+                coloraxis_showscale=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Feature importance data not available for the selected target.")
+    else:
+        st.info("Feature importance could not be computed. This may be because the models don't support feature importance extraction.")
 
-        validation_data.append(
 
-            {
+# ============================================================
+# TAB 3: EXCIPIENT OPTIMIZER
+# ============================================================
 
-                "CQA":
-                    target,
+with tab3:
+    st.markdown('<div class="section-header">⚙️ Reverse Optimization Engine</div>', unsafe_allow_html=True)
+    st.info("Set your target quality boundaries, and the algorithm will recommend the ideal excipient formula.")
+    
+    col_opt1, col_opt2, col_opt3 = st.columns([2, 2, 1.5])
+    with col_opt1:
+        target_choice = st.selectbox("🎯 Target to Optimize", TARGETS, key="opt_target_choice")
+    with col_opt2:
+        goal_type = st.radio("🎯 Optimization Goal", ["Maximize", "Minimize", "Target Specific Value"], key="opt_goal_type")
+    with col_opt3:
+        if goal_type == "Target Specific Value":
+            target_val = st.number_input("🎯 Desired Value", value=float(df[target_choice].mean()), key="opt_target_val", format="%.3f")
+        else:
+            target_val = 0.0
+            st.markdown("<p style='color:#94a3b8;font-size:0.8rem;margin-top:1.5rem;'>Optimization will maximize or minimize the selected target.</p>", unsafe_allow_html=True)
 
-                "Test R²":
-                    metrics["R2"],
+    # Toggle to lock API & Physical properties during optimization
+    st.markdown("---")
+    lock_api_physical = st.checkbox("🔒 Lock API & Physical Properties (Only optimize Excipients)", value=True, 
+                           help="If checked, the optimizer will use the API and Physical values from the Prediction Results tab and only search for the best excipient ratios.")
 
-                "Test RMSE":
-                    metrics["RMSE"],
+    if st.button("🚀 Run Optimization", key="run_opt_btn"):
+        if target_choice not in trained_models:
+            st.error(f"Model for {target_choice} not available. Cannot run optimization.")
+        else:
+            with st.spinner("🔬 Searching the formulation space for optimal solution..."):
+                try:
+                    # Get current API/Physical values from session state
+                    current_input_data = {}
+                    for feat in FEATURES:
+                        # Try to get the value from the UI
+                        val = st.session_state.get(f"api_{feat}", st.session_state.get(f"excipient_{feat}", None))
+                        if val is not None:
+                            current_input_data[feat] = val
+                        else:
+                            # Fallback to mean
+                            current_input_data[feat] = float(df[feat].mean())
+                    
+                    # Decide which features to optimize vs keep fixed
+                    if lock_api_physical:
+                        opt_features = excipient_features
+                        fixed_features = api_physical_features
+                    else:
+                        opt_features = FEATURES
+                        fixed_features = []
 
-                "Test MAE":
-                    metrics["MAE"],
+                    def objective_func(x):
+                        # Reconstruct the full formulation dictionary
+                        current_formulation = {}
+                        for i, feat in enumerate(opt_features):
+                            current_formulation[feat] = x[i]
+                        for feat in fixed_features:
+                            # Try to get from input_data if available, otherwise from current_input_data
+                            if feat in input_data:
+                                current_formulation[feat] = input_data[feat]
+                            elif feat in current_input_data:
+                                current_formulation[feat] = current_input_data[feat]
+                            else:
+                                current_formulation[feat] = float(df[feat].mean())
+                        
+                        # Ensure columns are in the exact order the model expects
+                        x_df = pd.DataFrame([current_formulation])[FEATURES] 
+                        
+                        pred = trained_models[target_choice].predict(x_df)[0]
+                        if goal_type == "Maximize":
+                            return -pred
+                        elif goal_type == "Minimize":
+                            return pred
+                        else:
+                            return abs(pred - target_val)
 
-            }
-        )
-
-    validation_df = pd.DataFrame(
-        validation_data
-    )
-
-    st.dataframe(
-
-        validation_df,
-
-        use_container_width=True,
-
-        hide_index=True
-
-    )
-
-    # --------------------------------------------------------
-    # FEATURE IMPORTANCE
-    # --------------------------------------------------------
-
-    st.markdown(
-
-        '<div class="section-title">'
-        'Key Formulation Factors'
-        '</div>',
-
-        unsafe_allow_html=True
-
-    )
-
-    selected_cqa = st.selectbox(
-
-        "Select CQA",
-
-        TARGETS
-
-    )
-
-    importance_df = (
-
-        models[selected_cqa][
-            "importance"
-        ]
-
-        .head(10)
-
-        .sort_values(
-
-            "Importance_%",
-
-            ascending=True
-
-        )
-
-    )
-
-    if len(
-        importance_df
-    ) > 0:
-
-        fig = px.bar(
-
-            importance_df,
-
-            x="Importance_%",
-
-            y="Feature",
-
-            orientation="h",
-
-            title=(
-
-                f"Key Factors Affecting "
-                f"{selected_cqa}"
-
-            ),
-
-        )
-
-        st.plotly_chart(
-
-            fig,
-
-            use_container_width=True
-
-        )
+                    bounds = [(float(df[f].min()), float(df[f].max())) for f in opt_features]
+                    res = differential_evolution(objective_func, bounds, seed=RANDOM_SEED, maxiter=30)
+                    
+                    if res.success:
+                        st.markdown("""
+                        <div class="opt-result-card">
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                                <span style="font-size:1.8rem;">✨</span>
+                                <div>
+                                    <div style="font-weight:700;font-size:1.1rem;color:#166534;">Optimal Formulation Found</div>
+                                    <div style="font-size:0.8rem;color:#15803d;font-weight:500;">Converged successfully</div>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        opt_res = pd.DataFrame({
+                            "Optimized Component": opt_features, 
+                            "Optimal Amount": res.x,
+                            "Min Bound": [bounds[i][0] for i in range(len(bounds))],
+                            "Max Bound": [bounds[i][1] for i in range(len(bounds))]
+                        })
+                        
+                        st.dataframe(opt_res, use_container_width=True, hide_index=True)
+                        
+                        # Reconstruct the final dataframe to get the predicted value
+                        final_formulation = {}
+                        for i, feat in enumerate(opt_features):
+                            final_formulation[feat] = res.x[i]
+                        for feat in fixed_features:
+                            if feat in input_data:
+                                final_formulation[feat] = input_data[feat]
+                            elif feat in current_input_data:
+                                final_formulation[feat] = current_input_data[feat]
+                            else:
+                                final_formulation[feat] = float(df[feat].mean())
+                            
+                        opt_df = pd.DataFrame([final_formulation])[FEATURES]
+                        opt_pred = float(trained_models[target_choice].predict(opt_df)[0])
+                        
+                        st.markdown(f"""
+                        <div style="background:#eff6ff;border-radius:12px;padding:1rem;border:1px solid #bfdbfe;margin-top:0.5rem;">
+                            <span style="font-weight:600;color:#1e3a5f;">Predicted {target_choice} for this formulation:</span>
+                            <span style="font-weight:800;font-size:1.2rem;color:#0284c7;margin-left:8px;">{opt_pred:.3f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.error("Optimization did not converge successfully. Please try adjusting the bounds or target value.")
+                except Exception as e:
+                    st.error(f"Optimization failed: {str(e)}")
