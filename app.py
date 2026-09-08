@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore")
 from pathlib import Path
 from datetime import datetime
 import hashlib
+import io
 
 import joblib
 import numpy as np
@@ -13,6 +14,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import base64
 
 from sklearn.model_selection import (
     train_test_split,
@@ -44,7 +46,7 @@ from scipy.optimize import differential_evolution
 # ============================================================
 
 st.set_page_config(
-    page_title="🧪 Virtual Formulation Lab",
+    page_title="🧪 Virtual Formulation Lab - Pharmaceutical R&D",
     page_icon="🧪",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -58,6 +60,80 @@ DATA_FILE = "final Data All Exipients.csv"
 MODEL_DIR = Path("models")
 MODEL_DIR.mkdir(exist_ok=True)
 MODEL_FILE = MODEL_DIR / "formulation_models.joblib"
+
+
+# ============================================================
+# 📊 EXCIPIENT CLASSIFICATION
+# ============================================================
+
+EXCIPIENT_CLASSIFICATION = {
+    "Fillers / Diluents": [
+        "Microcrystalline Cellulose", "Lactose", "Mannitol", "Starch",
+        "Dibasic calcium phosphate", "Sucrose", "Cellactose", "Ludipress",
+        "Pharmaburst", "Parteck", "Prosolv ODT"
+    ],
+    "Binders": [
+        "Hydroxypropyl Cellulose (HPC)", "Polyvinylpyrrolidone (Crospovidone)",
+        "Polyethylene Glycol", "Starch", "Gum", "Mucilage powder",
+        "Plantago ovata"
+    ],
+    "Disintegrants": [
+        "Sodium croscarmellose", "Sodium starch glycolate",
+        "Crospovidone (Polyvinylpyrrolidone)", "Polyvinyl acetate",
+        "Starch", "Microcrystalline Cellulose"
+    ],
+    "Lubricants & Glidants": [
+        "Magnesium Stearate", "Talc", "Colloidal silicon dioxide (Aerosil)",
+        "Sodium stearyl fumarate", "Sodium lauryl sulfate(SLS)",
+        "Polyethylene Glycol", "Silicon dioxide", "Sodium behenate",
+        "Acryflow-L", "Aerosol", "Kaolin", "Lubritose"
+    ],
+    "Sweeteners": [
+        "Aspartame", "Sodium saccharin", "Sucralose", "Neotame",
+        "Acesulfame potassium", "Stevia leaf Powder", "Sodium Saccharine"
+    ],
+    "Flavors & Taste Masking": [
+        "Menthol", "Clove oil", "Citric acid", "Camphor", "B-cyclodextrin"
+    ],
+    "Special Functions": [
+        "Chitosan", "Eudragit EPO", "Precirol", "Polacrilin Potassium",
+        "Quinoline yellow lake", "Methyl paraben", "Sodium bicarbonate (NaHCO3)",
+        "Ocimum sanctum seed powder", "Agar", "Calcium carbonate", "Indion",
+        "CPE", "GNSP", "Sodium croscarmellose"
+    ]
+}
+
+# Create a reverse mapping for quick lookup
+EXCIPIENT_TO_CATEGORY = {}
+for category, excipients in EXCIPIENT_CLASSIFICATION.items():
+    for excipient in excipients:
+        EXCIPIENT_TO_CATEGORY[excipient] = category
+
+# Get all excipient names from the classification
+ALL_KNOWN_EXCIPIENTS = set(EXCIPIENT_TO_CATEGORY.keys())
+
+# Define category icons
+CATEGORY_ICONS = {
+    "Fillers / Diluents": "📦",
+    "Binders": "🔗",
+    "Disintegrants": "💥",
+    "Lubricants & Glidants": "⚙️",
+    "Sweeteners": "🍬",
+    "Flavors & Taste Masking": "🍓",
+    "Special Functions": "⚡"
+}
+
+
+# ============================================================
+# 🔧 HELPER FUNCTION FOR DOWNLOAD
+# ============================================================
+
+def get_download_link(df: pd.DataFrame, filename: str = "formulation_results.csv") -> str:
+    """Generate a download link for a DataFrame as CSV."""
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" style="display:inline-block;padding:0.6rem 2rem;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:white;border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:all 0.3s ease;box-shadow:0 4px 14px rgba(14,165,233,0.25);border:1px solid rgba(255,255,255,0.1);">📥 Export Results</a>'
+    return href
 
 
 # ============================================================
@@ -458,7 +534,21 @@ st.markdown("""
         border-top: none !important;
     }
     .streamlit-expander {
-        margin-bottom: 0.8rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* ===== CATEGORY EXPANDER STYLING ===== */
+    .category-expander .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+        border-left: 4px solid #0ea5e9 !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        font-size: 0.9rem !important;
+    }
+    .category-expander .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, #e8edf3 0%, #d1d9e6 100%) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
     /* ===== RESPONSIVE ===== */
@@ -747,7 +837,7 @@ feature_importance_data = compute_feature_importance(trained_models, FEATURES, T
 st.markdown('<div class="main-title">🧪 Virtual Formulation Lab</div>', unsafe_allow_html=True)
 st.markdown("""
 <div class="subtitle">
-    <span>AI-Powered Pharmaceutical Excipient Optimization</span>
+    <span>AI-Powered Pharmaceutical Formulation Development Platform</span>
     <div style="display:flex;align-items:center;gap:12px;">
         <span class="subtitle-status">System Ready</span>
     </div>
@@ -755,22 +845,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ===== TABS =====
-tab1, tab2, tab3 = st.tabs(["🎯 Prediction Results", "📈 Model Performance", "⚙️ Excipient Optimizer"])
+tab1, tab2, tab3 = st.tabs(["📊 Formulation Prediction", "📈 Model Performance Analytics", "⚙️ Formulation Optimizer"])
 
 # ============================================================
 # TAB 1: PREDICTION RESULTS
 # ============================================================
 
 with tab1:
-    st.markdown('<div class="section-header">📊 Predicted Quality Attributes</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📊 Predicted Critical Quality Attributes (CQAs)</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.9rem;margin-bottom:1rem;">
+        Input your formulation parameters to predict the key quality attributes of your pharmaceutical formulation.
+    </div>
+    """, unsafe_allow_html=True)
     
     input_data = {}
     
     # Create expandable section for API & Physical Properties
-    with st.expander("🔬 API & Physical Properties", expanded=False):
+    with st.expander("🔬 API & Physicochemical Properties", expanded=False):
         st.markdown("""
         <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;">
-            Adjust the API and physical property parameters below
+            Adjust the API molecular properties and powder characteristics
         </div>
         """, unsafe_allow_html=True)
         
@@ -790,50 +885,103 @@ with tab1:
                         format="%.3f"
                     )
     
-    # Create expandable section for Excipients
-    with st.expander("💊 Excipients", expanded=False):
+    # Create expandable section for Excipients - WITH CATEGORY EXPANDERS
+    with st.expander("💊 Excipient Composition", expanded=False):
         st.markdown("""
         <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;">
-            Adjust the excipient formulation parameters below
+            Adjust the excipient concentrations in the formulation
+            <span style="display:inline-block;font-size:0.65rem;background:#f1f5f9;padding:0.15rem 0.6rem;border-radius:12px;margin-left:0.5rem;color:#475569;">
+                Click each category to expand
+            </span>
         </div>
         """, unsafe_allow_html=True)
         
         if excipient_features:
-            cols = st.columns(3)
-            for idx, feat in enumerate(excipient_features):
-                with cols[idx % 3]:
-                    min_val = float(df[feat].min())
-                    max_val = float(df[feat].max())
-                    mean_val = float(df[feat].mean())
-                    input_data[feat] = st.number_input(
-                        feat, 
-                        min_value=min_val, 
-                        max_value=max_val, 
-                        value=mean_val, 
-                        key=f"excipient_{feat}",
-                        format="%.3f"
-                    )
+            # Group excipients by category
+            excipients_by_category = {}
+            uncategorized = []
+            
+            for feat in excipient_features:
+                if feat in EXCIPIENT_TO_CATEGORY:
+                    category = EXCIPIENT_TO_CATEGORY[feat]
+                    if category not in excipients_by_category:
+                        excipients_by_category[category] = []
+                    excipients_by_category[category].append(feat)
+                else:
+                    uncategorized.append(feat)
+            
+            # Display each category as its own expander
+            for category, excipients_list in excipients_by_category.items():
+                icon = CATEGORY_ICONS.get(category, "📌")
+                # Create a unique key for each category expander
+                expander_key = f"cat_{category.replace(' ', '_').replace('/', '_')}"
+                
+                with st.expander(f"{icon} {category}", expanded=False):
+                    # Display in 3 columns
+                    cols = st.columns(3)
+                    for idx, feat in enumerate(excipients_list):
+                        with cols[idx % 3]:
+                            min_val = float(df[feat].min())
+                            max_val = float(df[feat].max())
+                            mean_val = float(df[feat].mean())
+                            input_data[feat] = st.number_input(
+                                feat, 
+                                min_value=min_val, 
+                                max_value=max_val, 
+                                value=mean_val, 
+                                key=f"excipient_{feat}",
+                                format="%.3f"
+                            )
+            
+            # Display uncategorized excipients if any
+            if uncategorized:
+                with st.expander("📌 Other Components", expanded=False):
+                    cols = st.columns(3)
+                    for idx, feat in enumerate(uncategorized):
+                        with cols[idx % 3]:
+                            min_val = float(df[feat].min())
+                            max_val = float(df[feat].max())
+                            mean_val = float(df[feat].mean())
+                            input_data[feat] = st.number_input(
+                                feat, 
+                                min_value=min_val, 
+                                max_value=max_val, 
+                                value=mean_val, 
+                                key=f"excipient_{feat}",
+                                format="%.3f"
+                            )
     
     # Predict button
-    predict_clicked = st.button("🔮 Predict Quality Attributes", key="predict_btn", use_container_width=False)
+    predict_clicked = st.button("🔮 Predict CQAs", key="predict_btn", use_container_width=False)
     
     # Generate ordered input dataframe matching FEATURES order
     ordered_input = {feat: input_data[feat] for feat in FEATURES if feat in input_data}
     input_df = pd.DataFrame([ordered_input])
     
+    # Store predictions in session state for download
+    if 'predictions_df' not in st.session_state:
+        st.session_state.predictions_df = None
+    if 'prediction_input_df' not in st.session_state:
+        st.session_state.prediction_input_df = None
+    
     # Display prediction results
     if predict_clicked:
         cols = st.columns(len(TARGETS))
-    
+        predictions = {}
+        
         for idx, target in enumerate(TARGETS):
             with cols[idx]:
                 if isinstance(trained_models, dict) and target in trained_models and hasattr(trained_models[target], "predict"):
                     try:
                         pred_val = float(trained_models[target].predict(input_df)[0])
+                        predictions[target] = pred_val
+                        
+                        # Format display name for better readability
+                        display_name = target.replace("_", " ").title()
                         st.markdown(
                             f"""
                             <div class="result-card">
-                                <div class="result-label">{target}</div>
+                                <div class="result-label">{display_name}</div>
                                 <div class="result-value">{pred_val:.3f}</div>
                                 <div class="result-unit">predicted value</div>
                             </div>
@@ -847,19 +995,42 @@ with tab1:
         
         st.markdown("""
         <div class="success-box">
-            ✅ This formulation is within the model's observed data domain.
+            ✅ Formulation validation successful — all predicted CQAs are within the model's training domain.
         </div>
         """, unsafe_allow_html=True)
+        
+        # Store predictions in session state
+        if predictions:
+            pred_df = pd.DataFrame([predictions])
+            st.session_state.predictions_df = pred_df
+            st.session_state.prediction_input_df = input_df.copy()
+        
+        # ===== SINGLE DOWNLOAD BUTTON FOR PREDICTIONS =====
+        if st.session_state.predictions_df is not None:
+            st.markdown("---")
+            # Combine input and predictions
+            combined_df = pd.concat([
+                st.session_state.prediction_input_df.reset_index(drop=True),
+                st.session_state.predictions_df.reset_index(drop=True)
+            ], axis=1)
+            st.markdown(get_download_link(combined_df, "formulation_prediction_results.csv"), unsafe_allow_html=True)
+    
     else:
         # Show message when no prediction has been made yet
-        st.info("👆 Click the 'Predict Quality Attributes' button above to see the predicted values for your formulation.")
+        st.info("👆 Click 'Predict CQAs' to generate formulation quality predictions based on your input parameters.")
+
 
 # ============================================================
 # TAB 2: MODEL PERFORMANCE
 # ============================================================
 
 with tab2:
-    st.markdown('<div class="section-header">📈 Model Evaluation & Diagnostics</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📈 Model Performance Analytics</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.9rem;margin-bottom:1rem;">
+        Evaluation metrics for the machine learning models developed for each Critical Quality Attribute (CQA).
+    </div>
+    """, unsafe_allow_html=True)
     
     X_all = df[FEATURES]
     perf_records = []
@@ -874,7 +1045,7 @@ with tab2:
                 rmse = np.sqrt(mean_squared_error(y_all, preds))
                 mae = mean_absolute_error(y_all, preds)
                 perf_records.append({
-                    "Target Quality Attribute": target,
+                    "Critical Quality Attribute": target.replace("_", " ").title(),
                     "R² Score": round(r2, 3),
                     "RMSE": round(rmse, 3),
                     "MAE": round(mae, 3)
@@ -906,19 +1077,28 @@ with tab2:
     # ============================================================
     
     st.markdown("---")
-    st.markdown('<div class="section-header">🔑 Key Formulation Factors</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">🔑 Critical Formulation Factors</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.9rem;margin-bottom:1rem;">
+        Identify the most influential formulation parameters affecting each Critical Quality Attribute.
+    </div>
+    """, unsafe_allow_html=True)
     
     if feature_importance_data:
         # Select target to display feature importance for
         selected_target_for_importance = st.selectbox(
-            "Select CQA (Critical Quality Attribute)",
-            options=[t for t in TARGETS if t in feature_importance_data],
+            "Select Critical Quality Attribute (CQA)",
+            options=[t.replace("_", " ").title() for t in TARGETS if t in feature_importance_data],
             key="importance_target_select",
-            help="Choose a quality attribute to see which formulation factors most influence it."
+            help="Select a quality attribute to visualize the relative importance of formulation factors."
         )
         
-        if selected_target_for_importance in feature_importance_data:
-            importance_dict = feature_importance_data[selected_target_for_importance]
+        # Map display name back to original target name
+        target_map = {t.replace("_", " ").title(): t for t in TARGETS}
+        selected_target_original = target_map.get(selected_target_for_importance, selected_target_for_importance)
+        
+        if selected_target_original in feature_importance_data:
+            importance_dict = feature_importance_data[selected_target_original]
             
             # Display as a styled header
             st.markdown(f"""
@@ -930,25 +1110,25 @@ with tab2:
             # Create dataframe for plotting
             all_importance_df = pd.DataFrame(
                 sorted(importance_dict.items(), key=lambda x: x[1], reverse=True),
-                columns=["Feature", "Importance_%"]
+                columns=["Formulation Factor", "Relative Importance (%)"]
             )
             
             # Plot with Plotly (only the chart, no table or progress bars)
             fig = px.bar(
                 all_importance_df.head(15),
-                x="Importance_%",
-                y="Feature",
+                x="Relative Importance (%)",
+                y="Formulation Factor",
                 orientation='h',
-                title=f"Top 15 Factors Affecting {selected_target_for_importance}",
-                color="Importance_%",
+                title=f"Top 15 Factors Influencing {selected_target_for_importance}",
+                color="Relative Importance (%)",
                 color_continuous_scale="Blues",
-                text="Importance_%"
+                text="Relative Importance (%)"
             )
             fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
             fig.update_layout(
                 height=450,
                 margin=dict(l=0, r=0, t=40, b=0),
-                xaxis_title="Importance (%)",
+                xaxis_title="Relative Importance (%)",
                 yaxis_title=None,
                 coloraxis_showscale=False,
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -956,9 +1136,9 @@ with tab2:
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Feature importance data not available for the selected target.")
+            st.info("Feature importance data not available for the selected CQA.")
     else:
-        st.info("Feature importance could not be computed. This may be because the models don't support feature importance extraction.")
+        st.info("Feature importance analysis is not available — this may be due to model compatibility limitations.")
 
 
 # ============================================================
@@ -966,31 +1146,42 @@ with tab2:
 # ============================================================
 
 with tab3:
-    st.markdown('<div class="section-header">⚙️ Reverse Optimization Engine</div>', unsafe_allow_html=True)
-    st.info("Set your target quality boundaries, and the algorithm will recommend the ideal excipient formula.")
+    st.markdown('<div class="section-header">⚙️ Formulation Optimization Engine</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.9rem;margin-bottom:1rem;">
+        Define your target quality criteria and let the AI recommend the optimal excipient composition to achieve your desired formulation performance.
+    </div>
+    """, unsafe_allow_html=True)
     
     col_opt1, col_opt2, col_opt3 = st.columns([2, 2, 1.5])
     with col_opt1:
-        target_choice = st.selectbox("🎯 Target to Optimize", TARGETS, key="opt_target_choice")
+        target_choice = st.selectbox(
+            "🎯 Target Quality Attribute", 
+            [t.replace("_", " ").title() for t in TARGETS], 
+            key="opt_target_choice"
+        )
+        # Map display name back to original
+        target_map = {t.replace("_", " ").title(): t for t in TARGETS}
+        target_choice_original = target_map.get(target_choice, target_choice)
     with col_opt2:
-        goal_type = st.radio("🎯 Optimization Goal", ["Maximize", "Minimize", "Target Specific Value"], key="opt_goal_type")
+        goal_type = st.radio("🎯 Optimization Objective", ["Maximize", "Minimize", "Target Specific Value"], key="opt_goal_type")
     with col_opt3:
         if goal_type == "Target Specific Value":
-            target_val = st.number_input("🎯 Desired Value", value=float(df[target_choice].mean()), key="opt_target_val", format="%.3f")
+            target_val = st.number_input("🎯 Desired Value", value=float(df[target_choice_original].mean()), key="opt_target_val", format="%.3f")
         else:
             target_val = 0.0
-            st.markdown("<p style='color:#94a3b8;font-size:0.8rem;margin-top:1.5rem;'>Optimization will maximize or minimize the selected target.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#94a3b8;font-size:0.8rem;margin-top:1.5rem;'>Optimization will maximize or minimize the selected quality attribute.</p>", unsafe_allow_html=True)
 
     # Toggle to lock API & Physical properties during optimization
     st.markdown("---")
-    lock_api_physical = st.checkbox("🔒 Lock API & Physical Properties (Only optimize Excipients)", value=True, 
-                           help="If checked, the optimizer will use the API and Physical values from the Prediction Results tab and only search for the best excipient ratios.")
+    lock_api_physical = st.checkbox("🔒 Fix API & Physicochemical Properties", value=True, 
+                           help="When enabled, only excipient concentrations will be optimized while API and physical properties remain fixed.")
 
-    if st.button("🚀 Run Optimization", key="run_opt_btn"):
-        if target_choice not in trained_models:
-            st.error(f"Model for {target_choice} not available. Cannot run optimization.")
+    if st.button("🚀 Run Formulation Optimization", key="run_opt_btn"):
+        if target_choice_original not in trained_models:
+            st.error(f"Model for {target_choice} is not available. Optimization cannot proceed.")
         else:
-            with st.spinner("🔬 Searching the formulation space for optimal solution..."):
+            with st.spinner("🔬 Searching the formulation design space for optimal solution..."):
                 try:
                     # Get current API/Physical values from session state
                     current_input_data = {}
@@ -1028,7 +1219,7 @@ with tab3:
                         # Ensure columns are in the exact order the model expects
                         x_df = pd.DataFrame([current_formulation])[FEATURES] 
                         
-                        pred = trained_models[target_choice].predict(x_df)[0]
+                        pred = trained_models[target_choice_original].predict(x_df)[0]
                         if goal_type == "Maximize":
                             return -pred
                         elif goal_type == "Minimize":
@@ -1045,20 +1236,26 @@ with tab3:
                             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                                 <span style="font-size:1.8rem;">✨</span>
                                 <div>
-                                    <div style="font-weight:700;font-size:1.1rem;color:#166534;">Optimal Formulation Found</div>
-                                    <div style="font-size:0.8rem;color:#15803d;font-weight:500;">Converged successfully</div>
+                                    <div style="font-weight:700;font-size:1.1rem;color:#166534;">Optimal Formulation Identified</div>
+                                    <div style="font-size:0.8rem;color:#15803d;font-weight:500;">Optimization converged successfully</div>
                                 </div>
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        opt_res = pd.DataFrame({
-                            "Optimized Component": opt_features, 
-                            "Optimal Amount": res.x,
-                            "Min Bound": [bounds[i][0] for i in range(len(bounds))],
-                            "Max Bound": [bounds[i][1] for i in range(len(bounds))]
-                        })
+                        # Add category information to the optimization results
+                        opt_results_data = []
+                        for i, feat in enumerate(opt_features):
+                            category = EXCIPIENT_TO_CATEGORY.get(feat, "Other")
+                            opt_results_data.append({
+                                "Formulation Component": feat,
+                                "Category": category,
+                                "Optimized Concentration": res.x[i],
+                                "Lower Bound": bounds[i][0],
+                                "Upper Bound": bounds[i][1]
+                            })
                         
+                        opt_res = pd.DataFrame(opt_results_data)
                         st.dataframe(opt_res, use_container_width=True, hide_index=True)
                         
                         # Reconstruct the final dataframe to get the predicted value
@@ -1074,14 +1271,21 @@ with tab3:
                                 final_formulation[feat] = float(df[feat].mean())
                             
                         opt_df = pd.DataFrame([final_formulation])[FEATURES]
-                        opt_pred = float(trained_models[target_choice].predict(opt_df)[0])
+                        opt_pred = float(trained_models[target_choice_original].predict(opt_df)[0])
                         
                         st.markdown(f"""
                         <div style="background:#eff6ff;border-radius:12px;padding:1rem;border:1px solid #bfdbfe;margin-top:0.5rem;">
-                            <span style="font-weight:600;color:#1e3a5f;">Predicted {target_choice} for this formulation:</span>
+                            <span style="font-weight:600;color:#1e3a5f;">Predicted {target_choice} for Optimized Formulation:</span>
                             <span style="font-weight:800;font-size:1.2rem;color:#0284c7;margin-left:8px;">{opt_pred:.3f}</span>
                         </div>
                         """, unsafe_allow_html=True)
+                        
+                        # ===== SINGLE DOWNLOAD BUTTON FOR OPTIMIZATION =====
+                        st.markdown("---")
+                        opt_results_df = opt_res.copy()
+                        opt_results_df["Predicted_Value"] = opt_pred
+                        st.markdown(get_download_link(opt_results_df, "optimized_formulation_results.csv"), unsafe_allow_html=True)
+                        
                     else:
                         st.error("Optimization did not converge successfully. Please try adjusting the bounds or target value.")
                 except Exception as e:
