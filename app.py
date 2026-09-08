@@ -1334,7 +1334,7 @@ with tab1:
 
 
 # ============================================================
-# TAB 2: EXCIPIENT OPTIMIZER
+# TAB 2: EXCIPIENT OPTIMIZER - FAST VERSION
 # ============================================================
 
 with tab2:
@@ -1387,44 +1387,99 @@ with tab2:
         else:
             with st.spinner("🔬 Searching the formulation design space for optimal solution..."):
                 try:
-                    current_input_data = {}
-                    for feat in FEATURES:
-                        val = st.session_state.get(f"api_{feat}", st.session_state.get(f"excipient_{feat}", None))
-                        if val is not None:
-                            current_input_data[feat] = val
-                        else:
-                            current_input_data[feat] = float(df[feat].mean())
+                    # Build a complete base formulation from all features
+                    base_formulation = {}
                     
+                    # First, get all API and physical properties from the input data or defaults
+                    for feat in api_physical_features:
+                        # Try to get from input_data first (from prediction tab)
+                        if feat in input_data:
+                            base_formulation[feat] = input_data[feat]
+                        else:
+                            # Try session state
+                            session_val = st.session_state.get(f"api_{feat}", None)
+                            if session_val is not None:
+                                base_formulation[feat] = session_val
+                            else:
+                                base_formulation[feat] = float(df[feat].mean())
+                    
+                    # Get all excipient features from session state or defaults
+                    for feat in excipient_features:
+                        session_val = st.session_state.get(f"excipient_{feat}", None)
+                        if session_val is not None:
+                            base_formulation[feat] = session_val
+                        elif feat in input_data:
+                            base_formulation[feat] = input_data[feat]
+                        else:
+                            base_formulation[feat] = float(df[feat].mean())
+                    
+                    # Determine which features to optimize
                     if lock_api_physical:
                         opt_features = excipient_features
-                        fixed_features = api_physical_features
                     else:
                         opt_features = FEATURES
-                        fixed_features = []
 
-                    def objective_func(x):
-                        current_formulation = {}
-                        for i, feat in enumerate(opt_features):
-                            current_formulation[feat] = x[i]
-                        for feat in fixed_features:
-                            if feat in input_data:
-                                current_formulation[feat] = input_data[feat]
-                            elif feat in current_input_data:
-                                current_formulation[feat] = current_input_data[feat]
-                            else:
-                                current_formulation[feat] = float(df[feat].mean())
+                    # Make sure we have all features in the base formulation
+                    for feat in FEATURES:
+                        if feat not in base_formulation:
+                            base_formulation[feat] = float(df[feat].mean())
+                    
+                    # Pre-compute fixed values for faster objective function
+                    fixed_values = {}
+                    for feat in FEATURES:
+                        if feat not in opt_features:
+                            fixed_values[feat] = base_formulation[feat]
+                    
+                    # Get the model for prediction
+                    model = trained_models[target_choice]
+                    
+                    # Pre-compute feature indices for faster access
+                    opt_indices = [FEATURES.index(feat) for feat in opt_features]
+                    fixed_indices = [FEATURES.index(feat) for feat in fixed_values.keys()]
+                    fixed_values_list = [fixed_values[feat] for feat in fixed_values.keys()]
+                    
+                    # Pre-compute bounds
+                    bounds = [(float(df[f].min()), float(df[f].max())) for f in opt_features]
+                    
+                    # Get median values for filling
+                    median_values = df[FEATURES].median().values
+                    
+                    # Define optimized objective function
+                    def objective_func_fast(x):
+                        # Start with median values
+                        x_full = median_values.copy()
                         
-                        x_df = pd.DataFrame([current_formulation])[FEATURES] 
-                        pred = trained_models[target_choice].predict(x_df)[0]
+                        # Fill optimized values
+                        for idx, val in zip(opt_indices, x):
+                            x_full[idx] = val
+                        
+                        # Fill fixed values
+                        for idx, val in zip(fixed_indices, fixed_values_list):
+                            x_full[idx] = val
+                        
+                        # Predict
+                        pred = model.predict([x_full])[0]
+                        
                         if goal_type == "Maximize":
                             return -pred
                         elif goal_type == "Minimize":
                             return pred
                         else:
                             return abs(pred - target_val)
-
-                    bounds = [(float(df[f].min()), float(df[f].max())) for f in opt_features]
-                    res = differential_evolution(objective_func, bounds, seed=RANDOM_SEED, maxiter=30)
+                    
+                    # Run optimization with faster settings
+                    res = differential_evolution(
+                        objective_func_fast, 
+                        bounds, 
+                        seed=RANDOM_SEED, 
+                        maxiter=25,  # Reduced from 50
+                        popsize=10,  # Reduced from 15
+                        tol=0.05,    # Looser tolerance for faster convergence
+                        mutation=(0.5, 1.0),
+                        recombination=0.7,
+                        workers=1,   # Single thread to avoid overhead
+                        disp=False
+                    )
                     
                     if res.success:
                         st.markdown("""
@@ -1453,20 +1508,14 @@ with tab2:
                         opt_res = pd.DataFrame(opt_results_data)
                         st.dataframe(opt_res, use_container_width=True, hide_index=True)
                         
-                        # Reconstruct the final dataframe to get the predicted value
-                        final_formulation = {}
+                        # Reconstruct the final formulation to get predicted value
+                        final_formulation = base_formulation.copy()
                         for i, feat in enumerate(opt_features):
                             final_formulation[feat] = res.x[i]
-                        for feat in fixed_features:
-                            if feat in input_data:
-                                final_formulation[feat] = input_data[feat]
-                            elif feat in current_input_data:
-                                final_formulation[feat] = current_input_data[feat]
-                            else:
-                                final_formulation[feat] = float(df[feat].mean())
                             
                         opt_df = pd.DataFrame([final_formulation])[FEATURES]
-                        opt_pred = float(trained_models[target_choice].predict(opt_df)[0])
+                        opt_df = opt_df.fillna(df[FEATURES].median())
+                        opt_pred = float(model.predict(opt_df)[0])
                         
                         st.markdown(f"""
                         <div class="prediction-box">
@@ -1493,8 +1542,18 @@ with tab2:
                         
                     else:
                         st.error("❌ Optimization did not converge successfully. Please try adjusting the bounds or target value.")
+                        
+                        # Display additional helpful info
+                        st.info("""
+                        💡 **Tips for successful optimization:**
+                        - Try adjusting the target value to a more achievable range
+                        - If fixing API properties, try unlocking them for more flexibility
+                        - The optimization may need more iterations - try again
+                        """)
+                        
                 except Exception as e:
                     st.error(f"❌ Optimization failed: {str(e)}")
+                    st.exception(e)
 
 
 # ============================================================
