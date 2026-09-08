@@ -916,8 +916,8 @@ st.markdown("""
 # ===== TABS =====
 tab1, tab2, tab3 = st.tabs([
     "📊 Formulation Prediction",
-    "📈 Model Performance Analytics", 
-    "⚙️ Formulation Optimizer"
+    "⚙️ Formulation Optimizer",
+    "📈 Model Performance Analytics"
 ])
 
 # ============================================================
@@ -1104,174 +1104,10 @@ with tab1:
 
 
 # ============================================================
-# TAB 2: MODEL PERFORMANCE
+# TAB 2: EXCIPIENT OPTIMIZER
 # ============================================================
 
 with tab2:
-    st.markdown("""
-    <div class="section-header">
-        <span class="section-header-icon">📈</span>
-        Model Performance Analytics
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
-        📊 Evaluation metrics for the machine learning models developed for each Critical Quality Attribute (CQA).
-    </div>
-    """, unsafe_allow_html=True)
-    
-    X_all = df[FEATURES]
-    perf_records = []
-    
-    for target in TARGETS:
-        if isinstance(trained_models, dict) and target in trained_models:
-            try:
-                y_all = df[target]
-                model = trained_models[target]
-                preds = model.predict(X_all)
-                r2 = r2_score(y_all, preds)
-                rmse = np.sqrt(mean_squared_error(y_all, preds))
-                mae = mean_absolute_error(y_all, preds)
-                
-                display_name = TARGET_DISPLAY_NAMES.get(target, target.replace("_", " ").title())
-                perf_records.append({
-                    "Critical Quality Attribute": display_name,
-                    "R² Score": round(r2, 3),
-                    "RMSE": round(rmse, 3),
-                    "MAE": round(mae, 3)
-                })
-            except Exception:
-                continue
-            
-    if perf_records:
-        perf_df = pd.DataFrame(perf_records)
-        st.dataframe(perf_df, use_container_width=True, hide_index=True)
-        
-        # Add summary metrics
-        st.markdown("---")
-        st.markdown("""
-        <div style="font-weight:700;font-size:1.1rem;color:#0f172a;margin-bottom:1rem;">
-            📊 Model Summary Statistics
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            avg_r2 = perf_df["R² Score"].mean()
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{avg_r2:.3f}</div>
-                <div class="metric-label">Average R² Score</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            avg_rmse = perf_df["RMSE"].mean()
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{avg_rmse:.3f}</div>
-                <div class="metric-label">Average RMSE</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col3:
-            avg_mae = perf_df["MAE"].mean()
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{avg_mae:.3f}</div>
-                <div class="metric-label">Average MAE</div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("No performance metrics available.")
-    
-    # ============================================================
-    # 📊 FORMULATION FACTORS ANALYSIS (Feature Importance)
-    # ============================================================
-    
-    st.markdown("---")
-    st.markdown("""
-    <div class="section-header">
-        <span class="section-header-icon">🔑</span>
-        Critical Formulation Factors Analysis
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
-        📈 Relative importance of each formulation parameter in predicting the selected Critical Quality Attribute.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if feature_importance_data:
-        available_targets = [t for t in TARGETS if t in feature_importance_data]
-        display_options = [TARGET_DISPLAY_NAMES.get(t, t.replace("_", " ").title()) for t in available_targets]
-        
-        selected_target_display = st.selectbox(
-            "Select Critical Quality Attribute (CQA)",
-            options=display_options,
-            key="importance_target_select",
-            help="Select a quality attribute to visualize the relative importance of formulation factors."
-        )
-        
-        # Map display name back to original target name
-        reverse_display_map = {v: k for k, v in TARGET_DISPLAY_NAMES.items()}
-        selected_target = reverse_display_map.get(selected_target_display, selected_target_display)
-        
-        if selected_target in feature_importance_data:
-            importance_dict = feature_importance_data[selected_target]
-            
-            # Create dataframe for plotting
-            all_importance_df = pd.DataFrame(
-                sorted(importance_dict.items(), key=lambda x: x[1], reverse=True),
-                columns=["Formulation Factor", "Relative Importance (%)"]
-            )
-            
-            # Plot with Plotly - Professional Design
-            fig = px.bar(
-                all_importance_df.head(15),
-                x="Relative Importance (%)",
-                y="Formulation Factor",
-                orientation='h',
-                title=f"Formulation Factor Importance for {selected_target_display}",
-                color="Relative Importance (%)",
-                color_continuous_scale="Blues",
-                text="Relative Importance (%)"
-            )
-            fig.update_traces(
-                texttemplate='%{text:.1f}%', 
-                textposition='outside',
-                hovertemplate='<b>%{y}</b><br>Relative Importance: %{x:.1f}%<extra></extra>'
-            )
-            fig.update_layout(
-                height=500,
-                margin=dict(l=0, r=0, t=50, b=0),
-                xaxis_title="Relative Importance (%)",
-                yaxis_title=None,
-                coloraxis_showscale=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Inter, sans-serif", size=12),
-                title_font=dict(size=16, weight=700, color="#0f172a"),
-                xaxis=dict(
-                    gridcolor='#f1f5f9',
-                    gridwidth=1,
-                    tickfont=dict(size=11, color="#475569")
-                ),
-                yaxis=dict(
-                    tickfont=dict(size=11, color="#475569")
-                )
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-        else:
-            st.info("Feature importance data not available for the selected CQA.")
-    else:
-        st.info("Feature importance analysis is not available — this may be due to model compatibility limitations.")
-
-
-# ============================================================
-# TAB 3: EXCIPIENT OPTIMIZER
-# ============================================================
-
-with tab3:
     st.markdown("""
     <div class="section-header">
         <span class="section-header-icon">⚙️</span>
@@ -1429,3 +1265,167 @@ with tab3:
                         st.error("❌ Optimization did not converge successfully. Please try adjusting the bounds or target value.")
                 except Exception as e:
                     st.error(f"❌ Optimization failed: {str(e)}")
+
+
+# ============================================================
+# TAB 3: MODEL PERFORMANCE
+# ============================================================
+
+with tab3:
+    st.markdown("""
+    <div class="section-header">
+        <span class="section-header-icon">📈</span>
+        Model Performance Analytics
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+        📊 Evaluation metrics for the machine learning models developed for each Critical Quality Attribute (CQA).
+    </div>
+    """, unsafe_allow_html=True)
+    
+    X_all = df[FEATURES]
+    perf_records = []
+    
+    for target in TARGETS:
+        if isinstance(trained_models, dict) and target in trained_models:
+            try:
+                y_all = df[target]
+                model = trained_models[target]
+                preds = model.predict(X_all)
+                r2 = r2_score(y_all, preds)
+                rmse = np.sqrt(mean_squared_error(y_all, preds))
+                mae = mean_absolute_error(y_all, preds)
+                
+                display_name = TARGET_DISPLAY_NAMES.get(target, target.replace("_", " ").title())
+                perf_records.append({
+                    "Critical Quality Attribute": display_name,
+                    "R² Score": round(r2, 3),
+                    "RMSE": round(rmse, 3),
+                    "MAE": round(mae, 3)
+                })
+            except Exception:
+                continue
+            
+    if perf_records:
+        perf_df = pd.DataFrame(perf_records)
+        st.dataframe(perf_df, use_container_width=True, hide_index=True)
+        
+        # Add summary metrics
+        st.markdown("---")
+        st.markdown("""
+        <div style="font-weight:700;font-size:1.1rem;color:#0f172a;margin-bottom:1rem;">
+            📊 Model Summary Statistics
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            avg_r2 = perf_df["R² Score"].mean()
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{avg_r2:.3f}</div>
+                <div class="metric-label">Average R² Score</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            avg_rmse = perf_df["RMSE"].mean()
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{avg_rmse:.3f}</div>
+                <div class="metric-label">Average RMSE</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            avg_mae = perf_df["MAE"].mean()
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{avg_mae:.3f}</div>
+                <div class="metric-label">Average MAE</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No performance metrics available.")
+    
+    # ============================================================
+    # 📊 FORMULATION FACTORS ANALYSIS (Feature Importance)
+    # ============================================================
+    
+    st.markdown("---")
+    st.markdown("""
+    <div class="section-header">
+        <span class="section-header-icon">🔑</span>
+        Critical Formulation Factors Analysis
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+        📈 Relative importance of each formulation parameter in predicting the selected Critical Quality Attribute.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if feature_importance_data:
+        available_targets = [t for t in TARGETS if t in feature_importance_data]
+        display_options = [TARGET_DISPLAY_NAMES.get(t, t.replace("_", " ").title()) for t in available_targets]
+        
+        selected_target_display = st.selectbox(
+            "Select Critical Quality Attribute (CQA)",
+            options=display_options,
+            key="importance_target_select",
+            help="Select a quality attribute to visualize the relative importance of formulation factors."
+        )
+        
+        # Map display name back to original target name
+        reverse_display_map = {v: k for k, v in TARGET_DISPLAY_NAMES.items()}
+        selected_target = reverse_display_map.get(selected_target_display, selected_target_display)
+        
+        if selected_target in feature_importance_data:
+            importance_dict = feature_importance_data[selected_target]
+            
+            # Create dataframe for plotting
+            all_importance_df = pd.DataFrame(
+                sorted(importance_dict.items(), key=lambda x: x[1], reverse=True),
+                columns=["Formulation Factor", "Relative Importance (%)"]
+            )
+            
+            # Plot with Plotly - Professional Design
+            fig = px.bar(
+                all_importance_df.head(15),
+                x="Relative Importance (%)",
+                y="Formulation Factor",
+                orientation='h',
+                title=f"Formulation Factor Importance for {selected_target_display}",
+                color="Relative Importance (%)",
+                color_continuous_scale="Blues",
+                text="Relative Importance (%)"
+            )
+            fig.update_traces(
+                texttemplate='%{text:.1f}%', 
+                textposition='outside',
+                hovertemplate='<b>%{y}</b><br>Relative Importance: %{x:.1f}%<extra></extra>'
+            )
+            fig.update_layout(
+                height=500,
+                margin=dict(l=0, r=0, t=50, b=0),
+                xaxis_title="Relative Importance (%)",
+                yaxis_title=None,
+                coloraxis_showscale=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter, sans-serif", size=12),
+                title_font=dict(size=16, weight=700, color="#0f172a"),
+                xaxis=dict(
+                    gridcolor='#f1f5f9',
+                    gridwidth=1,
+                    tickfont=dict(size=11, color="#475569")
+                ),
+                yaxis=dict(
+                    tickfont=dict(size=11, color="#475569")
+                )
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+        else:
+            st.info("Feature importance data not available for the selected CQA.")
+    else:
+        st.info("Feature importance analysis is not available — this may be due to model compatibility limitations.")
