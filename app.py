@@ -46,7 +46,7 @@ from scipy.optimize import differential_evolution
 # ============================================================
 
 st.set_page_config(
-    page_title="🧪 Virtual Formulation Lab - Pharmaceutical R&D",
+    page_title="🧪 The Formula - Virtual Formulation Lab (Ziad Ibrahim)",
     page_icon="🧪",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -130,9 +130,12 @@ CATEGORY_ICONS = {
 
 def get_download_link(df: pd.DataFrame, filename: str = "formulation_results.csv") -> str:
     """Generate a download link for a DataFrame as CSV."""
+    # Ensure filename ends with .csv
+    if not filename.endswith(".csv"):
+        filename += ".csv"
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" style="display:inline-block;padding:0.6rem 2rem;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:white;border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:all 0.3s ease;box-shadow:0 4px 14px rgba(14,165,233,0.25);border:1px solid rgba(255,255,255,0.1);">📥 Export Results</a>'
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" style="display:inline-block;padding:0.6rem 2rem;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:white;border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:all 0.3s ease;box-shadow:0 4px 14px rgba(14,165,233,0.25);border:1px solid rgba(255,255,255,0.1);">📥 Download "{filename}"</a>'
     return href
 
 
@@ -834,7 +837,7 @@ feature_importance_data = compute_feature_importance(trained_models, FEATURES, T
 # ============================================================
 
 # ===== HEADER =====
-st.markdown('<div class="main-title">🧪 Virtual Formulation Lab</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">🧪 The Formula - Virtual Formulation Lab</div>', unsafe_allow_html=True)
 st.markdown("""
 <div class="subtitle">
     <span>AI-Powered Pharmaceutical Formulation Development Platform</span>
@@ -1005,15 +1008,17 @@ with tab1:
             st.session_state.predictions_df = pred_df
             st.session_state.prediction_input_df = input_df.copy()
         
-        # ===== SINGLE DOWNLOAD BUTTON FOR PREDICTIONS =====
+        # ===== CUSTOM FILENAME & DOWNLOAD BUTTON FOR PREDICTIONS =====
         if st.session_state.predictions_df is not None:
             st.markdown("---")
+            st.markdown("### 💾 Export Prediction Results")
+            custom_filename_pred = st.text_input("Enter file name for download:", value="the_formula_prediction_results", key="custom_filename_pred")
             # Combine input and predictions
             combined_df = pd.concat([
                 st.session_state.prediction_input_df.reset_index(drop=True),
                 st.session_state.predictions_df.reset_index(drop=True)
             ], axis=1)
-            st.markdown(get_download_link(combined_df, "formulation_prediction_results.csv"), unsafe_allow_html=True)
+            st.markdown(get_download_link(combined_df, custom_filename_pred), unsafe_allow_html=True)
     
     else:
         # Show message when no prediction has been made yet
@@ -1280,11 +1285,13 @@ with tab3:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # ===== SINGLE DOWNLOAD BUTTON FOR OPTIMIZATION =====
+                        # ===== CUSTOM FILENAME & DOWNLOAD BUTTON FOR OPTIMIZATION =====
                         st.markdown("---")
+                        st.markdown("### 💾 Export Optimized Results")
+                        custom_filename_opt = st.text_input("Enter file name for download:", value="the_formula_optimized_results", key="custom_filename_opt")
                         opt_results_df = opt_res.copy()
                         opt_results_df["Predicted_Value"] = opt_pred
-                        st.markdown(get_download_link(opt_results_df, "optimized_formulation_results.csv"), unsafe_allow_html=True)
+                        st.markdown(get_download_link(opt_results_df, custom_filename_opt), unsafe_allow_html=True)
                         
                     else:
                         st.error("Optimization did not converge successfully. Please try adjusting the bounds or target value.")
