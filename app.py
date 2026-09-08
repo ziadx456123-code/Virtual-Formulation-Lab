@@ -146,7 +146,7 @@ def get_download_link(df: pd.DataFrame, filename: str = "formulation_results.csv
 
 
 # ============================================================
-# 🎨 PROFESSIONAL UI STYLING - ENHANCED
+# 🎨 PROFESSIONAL UI STYLING - LIGHT & DARK MODE COMPATIBLE
 # ============================================================
 
 st.markdown("""
@@ -187,12 +187,12 @@ st.markdown("""
     }
     
     .subtitle {
-        color: #475569;
+        color: var(--text-color-secondary, #475569);
         font-size: 1rem;
         margin-bottom: 1.5rem;
         font-weight: 500;
         padding-bottom: 0.8rem;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid var(--border-color, #e2e8f0);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -206,7 +206,7 @@ st.markdown("""
         font-size: 0.75rem;
         color: #059669;
         font-weight: 600;
-        background: #ecfdf5;
+        background: var(--success-bg, #ecfdf5);
         padding: 0.3rem 1rem;
         border-radius: 20px;
         border: 1px solid #a7f3d0;
@@ -225,43 +225,43 @@ st.markdown("""
     /* ===== TABS STYLING ===== */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.25rem;
-        background: #f1f5f9;
+        background: var(--bg-secondary, #f1f5f9);
         border-radius: 16px;
         padding: 0.4rem;
         margin-bottom: 1.5rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color, #e2e8f0);
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 12px;
         padding: 0.7rem 2rem;
         font-weight: 600;
         font-size: 0.9rem;
-        color: #64748b;
+        color: var(--text-color-secondary, #64748b);
         transition: all 0.3s ease;
         background: transparent;
         letter-spacing: 0.3px;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(255,255,255,0.7);
-        color: #0f172a;
+        background: var(--bg-hover, rgba(255,255,255,0.7));
+        color: var(--text-color-primary, #0f172a);
         transform: translateY(-1px);
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background: #ffffff;
+        background: var(--bg-card, #ffffff);
         color: #1a56db;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 16px var(--shadow-color, rgba(0,0,0,0.08));
         border: 1px solid #dbeafe;
         font-weight: 700;
     }
 
     /* ===== RESULT CARDS ===== */
     .result-card {
-        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        background: var(--bg-card, linear-gradient(145deg, #ffffff 0%, #f8fafc 100%));
         border-radius: 18px;
         padding: 1.8rem 1rem;
         text-align: center;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+        border: 1px solid var(--border-color, #e2e8f0);
+        box-shadow: 0 2px 12px var(--shadow-color, rgba(0,0,0,0.02));
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         height: 100%;
         position: relative;
@@ -289,11 +289,11 @@ st.markdown("""
     }
     .result-card:hover {
         transform: translateY(-6px);
-        box-shadow: 0 16px 48px -12px rgba(0,0,0,0.15);
+        box-shadow: 0 16px 48px -12px var(--shadow-color, rgba(0,0,0,0.15));
         border-color: #93c5fd;
     }
     .result-label {
-        color: #94a3b8;
+        color: var(--text-color-muted, #94a3b8);
         font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
@@ -313,7 +313,7 @@ st.markdown("""
     }
     .result-unit {
         font-size: 0.65rem;
-        color: #94a3b8;
+        color: var(--text-color-muted, #94a3b8);
         font-weight: 500;
         margin-top: 4px;
         letter-spacing: 0.5px;
@@ -323,9 +323,9 @@ st.markdown("""
     .success-box {
         padding: 16px 24px;
         border-radius: 14px;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        background: var(--success-bg, linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%));
         border-left: 6px solid #22c55e;
-        color: #166534;
+        color: var(--success-text, #166534);
         font-size: 0.95rem;
         margin: 16px 0;
         font-weight: 500;
@@ -363,46 +363,47 @@ st.markdown("""
     .stDataFrame {
         border-radius: 14px !important;
         overflow: hidden !important;
-        border: 1px solid #f1f5f9 !important;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.02) !important;
+        border: 1px solid var(--border-color, #f1f5f9) !important;
+        box-shadow: 0 2px 12px var(--shadow-color, rgba(0,0,0,0.02)) !important;
     }
     .stDataFrame thead tr th {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+        background: var(--bg-secondary, linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)) !important;
         font-weight: 700 !important;
         font-size: 0.75rem !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        color: #334155 !important;
+        color: var(--text-color-primary, #334155) !important;
         padding: 0.8rem 1rem !important;
-        border-bottom: 2px solid #cbd5e1 !important;
+        border-bottom: 2px solid var(--border-color, #cbd5e1) !important;
     }
     .stDataFrame tbody tr td {
         padding: 0.7rem 1rem !important;
         font-size: 0.85rem !important;
         font-weight: 500 !important;
-        border-bottom: 1px solid #f8fafc !important;
+        border-bottom: 1px solid var(--border-color, #f8fafc) !important;
+        color: var(--text-color-primary, #1e293b) !important;
     }
     .stDataFrame tbody tr:hover {
-        background: #f1f5f9 !important;
+        background: var(--bg-hover, #f1f5f9) !important;
     }
 
     /* ===== SELECTBOX & RADIO ===== */
     .stSelectbox label, .stRadio label {
         font-weight: 700 !important;
         font-size: 0.85rem !important;
-        color: #1e293b !important;
+        color: var(--text-color-primary, #1e293b) !important;
         letter-spacing: 0.3px;
         margin-bottom: 4px !important;
     }
     .stSelectbox > div > div {
         border-radius: 12px !important;
-        border: 2px solid #e2e8f0 !important;
-        background: #ffffff !important;
+        border: 2px solid var(--border-color, #e2e8f0) !important;
+        background: var(--bg-card, #ffffff) !important;
         transition: all 0.25s ease !important;
     }
     .stSelectbox > div > div:hover {
-        border-color: #94a3b8 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        border-color: var(--text-color-muted, #94a3b8) !important;
+        box-shadow: 0 2px 8px var(--shadow-color, rgba(0,0,0,0.02));
     }
     .stSelectbox > div > div:focus-within {
         border-color: #3b82f6 !important;
@@ -410,19 +411,20 @@ st.markdown("""
     }
     .stRadio [role="radiogroup"] {
         gap: 0.75rem !important;
-        background: #f8fafc;
+        background: var(--bg-secondary, #f8fafc);
         padding: 0.5rem;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color, #e2e8f0);
     }
     .stRadio [role="radio"] {
         padding: 0.5rem 1.2rem !important;
         border-radius: 10px !important;
         transition: all 0.2s ease !important;
         font-weight: 500 !important;
+        color: var(--text-color-primary, #1e293b) !important;
     }
     .stRadio [role="radio"]:hover {
-        background: #e2e8f0 !important;
+        background: var(--bg-hover, #e2e8f0) !important;
     }
     .stRadio [role="radio"][aria-checked="true"] {
         background: #dbeafe !important;
@@ -435,20 +437,20 @@ st.markdown("""
     .section-header {
         font-size: 1.3rem;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--text-color-primary, #0f172a);
         margin-bottom: 1rem;
         letter-spacing: -0.3px;
         display: flex;
         align-items: center;
         gap: 10px;
         padding-bottom: 0.5rem;
-        border-bottom: 3px solid #e2e8f0;
+        border-bottom: 3px solid var(--border-color, #e2e8f0);
     }
     .section-header-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        background: var(--bg-highlight, linear-gradient(135deg, #dbeafe, #eff6ff));
         border-radius: 10px;
         padding: 0.3rem 0.6rem;
         font-size: 1.1rem;
@@ -456,7 +458,7 @@ st.markdown("""
 
     /* ===== OPTIMIZATION RESULT ===== */
     .opt-result-card {
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        background: var(--success-bg, linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%));
         border-radius: 16px;
         padding: 1.8rem;
         border: 1px solid #bbf7d0;
@@ -468,17 +470,20 @@ st.markdown("""
         box-shadow: 0 8px 40px rgba(34, 197, 94, 0.12);
         transform: translateY(-2px);
     }
+    .opt-result-card div {
+        color: var(--success-text, #166534) !important;
+    }
 
     /* ===== INFO BOX ===== */
     .stAlert {
         border-radius: 14px !important;
         border-left: 5px solid !important;
-        background: #f8fafc !important;
-        border-color: #e2e8f0 !important;
+        background: var(--bg-secondary, #f8fafc) !important;
+        border-color: var(--border-color, #e2e8f0) !important;
         padding: 1.2rem !important;
     }
     .stAlert > div {
-        color: #1e293b !important;
+        color: var(--text-color-primary, #1e293b) !important;
         font-weight: 500 !important;
         font-size: 0.9rem !important;
     }
@@ -489,24 +494,24 @@ st.markdown("""
         height: 6px;
     }
     ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+        background: var(--bg-secondary, #f1f5f9);
         border-radius: 10px;
     }
     ::-webkit-scrollbar-thumb {
-        background: #94a3b8;
+        background: var(--text-color-muted, #94a3b8);
         border-radius: 10px;
         transition: all 0.2s ease;
     }
     ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
+        background: var(--text-color-secondary, #64748b);
     }
 
     /* ===== FORM INPUT STYLING ===== */
     .form-section {
-        background: #f8fafc;
+        background: var(--bg-secondary, #f8fafc);
         border-radius: 14px;
         padding: 1.5rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color, #e2e8f0);
         margin-bottom: 1.2rem;
         transition: all 0.3s ease;
     }
@@ -516,7 +521,7 @@ st.markdown("""
     }
     .form-section-title {
         font-weight: 700;
-        color: #0f172a;
+        color: var(--text-color-primary, #0f172a);
         font-size: 0.95rem;
         margin-bottom: 1rem;
         display: flex;
@@ -525,12 +530,12 @@ st.markdown("""
     }
     .stNumberInput > div > div > input {
         border-radius: 10px !important;
-        border: 2px solid #e2e8f0 !important;
+        border: 2px solid var(--border-color, #e2e8f0) !important;
         padding: 0.5rem 0.8rem !important;
         font-size: 0.85rem !important;
-        background: #ffffff !important;
+        background: var(--bg-card, #ffffff) !important;
         font-weight: 500;
-        color: #0f172a !important;
+        color: var(--text-color-primary, #0f172a) !important;
         height: 42px !important;
         transition: all 0.25s ease !important;
     }
@@ -539,10 +544,10 @@ st.markdown("""
         box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08) !important;
     }
     .stNumberInput > div > div > input:hover {
-        border-color: #94a3b8 !important;
+        border-color: var(--text-color-muted, #94a3b8) !important;
     }
     .stNumberInput label {
-        color: #475569 !important;
+        color: var(--text-color-secondary, #475569) !important;
         font-size: 0.8rem !important;
         font-weight: 600 !important;
         margin-bottom: 4px !important;
@@ -550,26 +555,26 @@ st.markdown("""
     
     /* ===== EXPANDER STYLING ===== */
     .streamlit-expanderHeader {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        background: var(--bg-secondary, linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)) !important;
         border-radius: 12px !important;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid var(--border-color, #e2e8f0) !important;
         font-weight: 700 !important;
-        color: #0f172a !important;
+        color: var(--text-color-primary, #0f172a) !important;
         padding: 0.9rem 1.4rem !important;
         transition: all 0.3s ease !important;
         font-size: 0.9rem !important;
     }
     .streamlit-expanderHeader:hover {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
-        border-color: #94a3b8 !important;
+        background: var(--bg-hover, linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)) !important;
+        border-color: var(--text-color-muted, #94a3b8) !important;
         transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 16px var(--shadow-color, rgba(0,0,0,0.04));
     }
     .streamlit-expanderContent {
-        background: #ffffff !important;
+        background: var(--bg-card, #ffffff) !important;
         border-radius: 0 0 12px 12px !important;
         padding: 1.2rem 0.8rem !important;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid var(--border-color, #e2e8f0) !important;
         border-top: none !important;
     }
     .streamlit-expander {
@@ -578,31 +583,31 @@ st.markdown("""
 
     /* ===== CATEGORY EXPANDER STYLING ===== */
     .category-expander .streamlit-expanderHeader {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+        background: var(--bg-secondary, linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)) !important;
         border-left: 5px solid #3b82f6 !important;
         font-weight: 700 !important;
-        color: #0f172a !important;
+        color: var(--text-color-primary, #0f172a) !important;
         font-size: 0.9rem !important;
     }
     .category-expander .streamlit-expanderHeader:hover {
-        background: linear-gradient(135deg, #e8edf3 0%, #d1d9e6 100%) !important;
+        background: var(--bg-hover, linear-gradient(135deg, #e8edf3 0%, #d1d9e6 100%)) !important;
         transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 16px var(--shadow-color, rgba(0,0,0,0.04));
     }
 
     /* ===== METRIC CARDS ===== */
     .metric-card {
-        background: #ffffff;
+        background: var(--bg-card, #ffffff);
         border-radius: 14px;
         padding: 1.2rem 1rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-color, #e2e8f0);
         text-align: center;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        box-shadow: 0 2px 8px var(--shadow-color, rgba(0,0,0,0.02));
     }
     .metric-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        box-shadow: 0 8px 24px var(--shadow-color, rgba(0,0,0,0.06));
         border-color: #93c5fd;
     }
     .metric-value {
@@ -613,11 +618,51 @@ st.markdown("""
     }
     .metric-label {
         font-size: 0.75rem;
-        color: #94a3b8;
+        color: var(--text-color-muted, #94a3b8);
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-top: 4px;
+    }
+
+    /* ===== INFO TEXT ===== */
+    .info-text {
+        color: var(--text-color-secondary, #64748b);
+        font-size: 0.95rem;
+        margin-bottom: 1.2rem;
+        background: var(--bg-secondary, #f8fafc);
+        padding: 0.8rem 1.2rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color, #e2e8f0);
+    }
+    .info-box {
+        color: var(--text-color-secondary, #64748b);
+        font-size: 0.85rem;
+        background: var(--bg-secondary, #f1f5f9);
+        padding: 0.3rem 0.8rem;
+        border-radius: 8px;
+    }
+    .prediction-box {
+        background: var(--bg-highlight, #eff6ff);
+        border-radius: 14px;
+        padding: 1.2rem 1.5rem;
+        border: 1px solid #bfdbfe;
+        margin-top: 0.8rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .prediction-box span:first-child {
+        font-weight: 700;
+        color: var(--text-color-primary, #1e3a5f);
+        font-size: 0.95rem;
+    }
+    .prediction-box span:last-child {
+        font-weight: 800;
+        font-size: 1.4rem;
+        color: #1a56db;
     }
 
     /* ===== RESPONSIVE ===== */
@@ -639,6 +684,191 @@ st.markdown("""
         }
         .stButton > button {
             width: 100% !important;
+        }
+    }
+
+    /* ===== DARK MODE OVERRIDES ===== */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --bg-highlight: #1e293b;
+            --text-color-primary: #f1f5f9;
+            --text-color-secondary: #94a3b8;
+            --text-color-muted: #64748b;
+            --border-color: #334155;
+            --shadow-color: rgba(0,0,0,0.4);
+            --success-bg: #1a2e1a;
+            --success-text: #86efac;
+        }
+        .result-card {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        .result-card:hover {
+            border-color: #3b82f6 !important;
+        }
+        .stDataFrame thead tr th {
+            background: var(--bg-secondary) !important;
+            color: #f1f5f9 !important;
+        }
+        .stDataFrame tbody tr td {
+            color: #e2e8f0 !important;
+            border-color: var(--border-color) !important;
+        }
+        .stDataFrame tbody tr:hover {
+            background: var(--bg-hover) !important;
+        }
+        .stSelectbox > div > div {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        .stRadio [role="radiogroup"] {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .stRadio [role="radio"] {
+            color: #e2e8f0 !important;
+        }
+        .stRadio [role="radio"]:hover {
+            background: var(--bg-hover) !important;
+        }
+        .stRadio [role="radio"][aria-checked="true"] {
+            background: #1e3a5f !important;
+            color: #60a5fa !important;
+            border-color: #3b82f6 !important;
+        }
+        .streamlit-expanderHeader {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+            color: #f1f5f9 !important;
+        }
+        .streamlit-expanderHeader:hover {
+            background: var(--bg-hover) !important;
+        }
+        .streamlit-expanderContent {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        .stNumberInput > div > div > input {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+            color: #f1f5f9 !important;
+        }
+        .stNumberInput > div > div > input:hover {
+            border-color: #64748b !important;
+        }
+        .stNumberInput label {
+            color: #94a3b8 !important;
+        }
+        .section-header {
+            color: #f1f5f9 !important;
+            border-bottom-color: var(--border-color) !important;
+        }
+        .section-header-icon {
+            background: var(--bg-secondary) !important;
+        }
+        .subtitle {
+            color: #94a3b8 !important;
+            border-bottom-color: var(--border-color) !important;
+        }
+        .success-box {
+            background: #1a2e1a !important;
+            border-color: #166534 !important;
+            color: #86efac !important;
+        }
+        .opt-result-card {
+            background: #1a2e1a !important;
+            border-color: #166534 !important;
+        }
+        .opt-result-card div {
+            color: #86efac !important;
+        }
+        .metric-card {
+            background: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        .metric-label {
+            color: #64748b !important;
+        }
+        .info-text {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+            color: #94a3b8 !important;
+        }
+        .info-box {
+            background: var(--bg-secondary) !important;
+            color: #94a3b8 !important;
+        }
+        .prediction-box {
+            background: #1a2e3a !important;
+            border-color: #1e40af !important;
+        }
+        .prediction-box span:first-child {
+            color: #93c5fd !important;
+        }
+        .stAlert {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .stAlert > div {
+            color: #e2e8f0 !important;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            background: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #94a3b8 !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background: var(--bg-hover) !important;
+            color: #f1f5f9 !important;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: var(--bg-card) !important;
+            color: #60a5fa !important;
+            border-color: #3b82f6 !important;
+        }
+        .main-title {
+            background: linear-gradient(135deg, #f1f5f9 0%, #60a5fa 30%, #93c5fd 60%, #a78bfa 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary) !important;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569 !important;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b !important;
+        }
+        .subtitle-status {
+            background: #1a2e1a !important;
+            border-color: #166534 !important;
+            color: #86efac !important;
+        }
+    }
+
+    /* ===== LIGHT MODE OVERRIDES ===== */
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-hover: #f1f5f9;
+            --bg-highlight: #eff6ff;
+            --text-color-primary: #0f172a;
+            --text-color-secondary: #475569;
+            --text-color-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --shadow-color: rgba(0,0,0,0.08);
+            --success-bg: #f0fdf4;
+            --success-text: #166534;
         }
     }
 </style>
@@ -932,7 +1162,7 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="info-text">
         💡 Input your formulation parameters below and click <strong>"🔮 Predict CQAs"</strong> to generate predicted quality attributes.
     </div>
     """, unsafe_allow_html=True)
@@ -942,7 +1172,7 @@ with tab1:
     # Create expandable section for API & Physical Properties
     with st.expander("🔬 API & Physicochemical Properties", expanded=True):
         st.markdown("""
-        <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;background:#f1f5f9;padding:0.3rem 0.8rem;border-radius:8px;">
+        <div class="info-box">
             ⚙️ Adjust the API molecular properties and powder characteristics
         </div>
         """, unsafe_allow_html=True)
@@ -966,7 +1196,7 @@ with tab1:
     # Create expandable section for Excipients - WITH CATEGORY EXPANDERS
     with st.expander("💊 Excipient Composition", expanded=True):
         st.markdown("""
-        <div style="margin-bottom:0.8rem;color:#64748b;font-size:0.85rem;background:#f1f5f9;padding:0.3rem 0.8rem;border-radius:8px;">
+        <div class="info-box">
             📌 Adjust the excipient concentrations — click each category to expand
         </div>
         """, unsafe_allow_html=True)
@@ -1084,7 +1314,7 @@ with tab1:
         if st.session_state.predictions_df is not None:
             st.markdown("---")
             st.markdown("""
-            <div style="font-weight:700;font-size:1.1rem;color:#0f172a;margin-bottom:0.5rem;">
+            <div style="font-weight:700;font-size:1.1rem;color:var(--text-color-primary, #0f172a);margin-bottom:0.5rem;">
                 💾 Export Prediction Results
             </div>
             """, unsafe_allow_html=True)
@@ -1115,7 +1345,7 @@ with tab2:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="info-text">
         🎯 Define your target quality criteria and let the AI recommend the optimal excipient composition.
     </div>
     """, unsafe_allow_html=True)
@@ -1138,7 +1368,7 @@ with tab2:
         else:
             target_val = 0.0
             st.markdown(f"""
-            <div style="background:#f1f5f9;border-radius:10px;padding:0.8rem;margin-top:1.5rem;border:1px solid #e2e8f0;color:#475569;font-size:0.85rem;text-align:center;">
+            <div style="background:var(--bg-secondary, #f1f5f9);border-radius:10px;padding:0.8rem;margin-top:1.5rem;border:1px solid var(--border-color, #e2e8f0);color:var(--text-color-secondary, #475569);font-size:0.85rem;text-align:center;">
                 ⚡ Optimization will <strong>{goal_type.lower()}</strong> the selected quality attribute.
             </div>
             """, unsafe_allow_html=True)
@@ -1202,8 +1432,8 @@ with tab2:
                             <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
                                 <span style="font-size:2.2rem;">✨</span>
                                 <div>
-                                    <div style="font-weight:800;font-size:1.3rem;color:#166534;">Optimal Formulation Identified</div>
-                                    <div style="font-size:0.85rem;color:#15803d;font-weight:500;">Optimization converged successfully</div>
+                                    <div style="font-weight:800;font-size:1.3rem;">Optimal Formulation Identified</div>
+                                    <div style="font-size:0.85rem;font-weight:500;">Optimization converged successfully</div>
                                 </div>
                             </div>
                         </div>
@@ -1239,16 +1469,16 @@ with tab2:
                         opt_pred = float(trained_models[target_choice].predict(opt_df)[0])
                         
                         st.markdown(f"""
-                        <div style="background:#eff6ff;border-radius:14px;padding:1.2rem 1.5rem;border:1px solid #bfdbfe;margin-top:0.8rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                            <span style="font-weight:700;color:#1e3a5f;font-size:0.95rem;">📊 Predicted {target_choice_display} for Optimized Formulation:</span>
-                            <span style="font-weight:800;font-size:1.4rem;color:#1a56db;">{opt_pred:.3f}</span>
+                        <div class="prediction-box">
+                            <span>📊 Predicted {target_choice_display} for Optimized Formulation:</span>
+                            <span>{opt_pred:.3f}</span>
                         </div>
                         """, unsafe_allow_html=True)
                         
                         # ===== CUSTOM FILENAME & DOWNLOAD BUTTON FOR OPTIMIZATION =====
                         st.markdown("---")
                         st.markdown("""
-                        <div style="font-weight:700;font-size:1.1rem;color:#0f172a;margin-bottom:0.5rem;">
+                        <div style="font-weight:700;font-size:1.1rem;color:var(--text-color-primary, #0f172a);margin-bottom:0.5rem;">
                             💾 Export Optimized Results
                         </div>
                         """, unsafe_allow_html=True)
@@ -1279,7 +1509,7 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="info-text">
         📊 Evaluation metrics for the machine learning models developed for each Critical Quality Attribute (CQA).
     </div>
     """, unsafe_allow_html=True)
@@ -1314,7 +1544,7 @@ with tab3:
         # Add summary metrics
         st.markdown("---")
         st.markdown("""
-        <div style="font-weight:700;font-size:1.1rem;color:#0f172a;margin-bottom:1rem;">
+        <div style="font-weight:700;font-size:1.1rem;color:var(--text-color-primary, #0f172a);margin-bottom:1rem;">
             📊 Model Summary Statistics
         </div>
         """, unsafe_allow_html=True)
@@ -1359,7 +1589,7 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
     st.markdown("""
-    <div style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;background:#f8fafc;padding:0.8rem 1.2rem;border-radius:12px;border:1px solid #e2e8f0;">
+    <div class="info-text">
         📈 Relative importance of each formulation parameter in predicting the selected Critical Quality Attribute.
     </div>
     """, unsafe_allow_html=True)
@@ -1388,7 +1618,7 @@ with tab3:
                 columns=["Formulation Factor", "Relative Importance (%)"]
             )
             
-            # Plot with Plotly - Professional Design
+            # Plot with Plotly - Professional Design with Dark Mode Support
             fig = px.bar(
                 all_importance_df.head(15),
                 x="Relative Importance (%)",
@@ -1399,30 +1629,59 @@ with tab3:
                 color_continuous_scale="Blues",
                 text="Relative Importance (%)"
             )
+            
+            # Determine if dark mode
+            import streamlit as st
+            is_dark = st.get_option('theme.base') == 'dark'
+            
+            plot_bgcolor = 'rgba(0,0,0,0)'
+            paper_bgcolor = 'rgba(0,0,0,0)'
+            font_color = '#f1f5f9' if is_dark else '#0f172a'
+            grid_color = 'rgba(255,255,255,0.1)' if is_dark else '#f1f5f9'
+            text_color = '#94a3b8' if is_dark else '#475569'
+            
             fig.update_traces(
                 texttemplate='%{text:.1f}%', 
                 textposition='outside',
-                hovertemplate='<b>%{y}</b><br>Relative Importance: %{x:.1f}%<extra></extra>'
+                hovertemplate='<b>%{y}</b><br>Relative Importance: %{x:.1f}%<extra></extra>',
+                marker=dict(
+                    color=all_importance_df["Relative Importance (%)"],
+                    colorscale="Blues",
+                    showscale=False
+                )
             )
+            
             fig.update_layout(
                 height=500,
                 margin=dict(l=0, r=0, t=50, b=0),
                 xaxis_title="Relative Importance (%)",
                 yaxis_title=None,
-                coloraxis_showscale=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Inter, sans-serif", size=12),
-                title_font=dict(size=16, weight=700, color="#0f172a"),
+                plot_bgcolor=plot_bgcolor,
+                paper_bgcolor=paper_bgcolor,
+                font=dict(family="Inter, sans-serif", size=12, color=font_color),
+                title_font=dict(size=16, weight=700, color=font_color),
                 xaxis=dict(
-                    gridcolor='#f1f5f9',
+                    gridcolor=grid_color,
                     gridwidth=1,
-                    tickfont=dict(size=11, color="#475569")
+                    tickfont=dict(size=11, color=text_color)
                 ),
                 yaxis=dict(
-                    tickfont=dict(size=11, color="#475569")
-                )
+                    tickfont=dict(size=11, color=text_color)
+                ),
+                coloraxis_showscale=False
             )
+            
+            # Add a subtle background for bars in dark mode
+            if is_dark:
+                fig.update_traces(
+                    marker=dict(
+                        color=all_importance_df["Relative Importance (%)"],
+                        colorscale="Blues",
+                        showscale=False,
+                        line=dict(width=1, color='rgba(255,255,255,0.2)')
+                    )
+                )
+            
             st.plotly_chart(fig, use_container_width=True)
             
         else:
