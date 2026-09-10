@@ -46,7 +46,7 @@ from scipy.optimize import differential_evolution
 # ============================================================
 
 st.set_page_config(
-    page_title="🧪 The Formula - AI Formulation Lab",
+    page_title="🧪 The Formula | Ziad Ibrahim",
     page_icon="🧪",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -60,6 +60,13 @@ DATA_FILE = "final Data All Exipients.csv"
 MODEL_DIR = Path("models")
 MODEL_DIR.mkdir(exist_ok=True)
 MODEL_FILE = MODEL_DIR / "formulation_models.joblib"
+
+
+# ============================================================
+# 👨‍🔬 DEVELOPER BRANDING
+# ============================================================
+
+DEVELOPER_NAME = "Ziad Ibrahim"
 
 
 # ============================================================
@@ -103,7 +110,6 @@ EXCIPIENT_CLASSIFICATION = {
     ]
 }
 
-# Create a reverse mapping for quick lookup
 EXCIPIENT_TO_CATEGORY = {}
 for category, excipients in EXCIPIENT_CLASSIFICATION.items():
     for excipient in excipients:
@@ -146,12 +152,11 @@ def get_download_link(df: pd.DataFrame, filename: str = "formulation_results.csv
 
 
 # ============================================================
-# 🎨 PROFESSIONAL UI STYLING - LIGHT & DARK MODE COMPATIBLE
+# 🎨 PROFESSIONAL UI STYLING
 # ============================================================
 
 st.markdown("""
 <style>
-    /* Hide Streamlit default elements */
     #MainMenu, footer, header { visibility: hidden; }
     .block-container {
         padding-top: 1.2rem;
@@ -159,11 +164,24 @@ st.markdown("""
         max-width: 1400px;
     }
 
-    /* Import Google Font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     * {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ===== HEADER ROW (TITLE LEFT + BADGE RIGHT) ===== */
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+    .header-row .main-title {
+        margin-bottom: 0;
+        padding: 0.2rem 0;
     }
 
     /* ===== MAIN TITLE ===== */
@@ -174,7 +192,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin-bottom: 0.1rem;
+        margin-bottom: 0.4rem;
         letter-spacing: -0.5px;
         padding: 0.5rem 0;
         line-height: 1.2;
@@ -186,6 +204,7 @@ st.markdown("""
         50% { background-position: 100% 50%; }
     }
     
+    /* ===== SUBTITLE ===== */
     .subtitle {
         color: var(--text-color-secondary, #475569);
         font-size: 1rem;
@@ -194,32 +213,44 @@ st.markdown("""
         padding-bottom: 0.8rem;
         border-bottom: 2px solid var(--border-color, #e2e8f0);
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        flex-wrap: wrap;
         gap: 0.5rem;
+        letter-spacing: 0.1px;
     }
-    .subtitle-status {
+
+    /* ===== DEVELOPER BADGE (SMALL - INLINE RIGHT) ===== */
+    .dev-badge {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.75rem;
-        color: #059669;
-        font-weight: 600;
-        background: var(--success-bg, #ecfdf5);
-        padding: 0.3rem 1rem;
-        border-radius: 20px;
-        border: 1px solid #a7f3d0;
+        gap: 7px;
+        background: linear-gradient(135deg, rgba(26,86,219,0.07), rgba(139,92,246,0.07));
+        border: 1px solid rgba(59,130,246,0.2);
+        border-radius: 999px;
+        padding: 0.32rem 0.95rem 0.32rem 0.35rem;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 1px 6px rgba(59,130,246,0.06);
+        flex-shrink: 0;
+        white-space: nowrap;
     }
-    .subtitle-status::before {
-        content: "●";
-        font-size: 0.6rem;
-        animation: pulse 2s infinite;
-        color: #22c55e;
+    .dev-badge-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1a56db, #8b5cf6);
+        color: white;
+        font-size: 0.72rem;
+        box-shadow: 0 2px 6px rgba(59,130,246,0.25);
+        flex-shrink: 0;
     }
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.2; }
+    .dev-badge-name {
+        font-weight: 700;
+        font-size: 0.78rem;
+        color: var(--text-color-primary, #0f172a);
+        letter-spacing: 0.2px;
+        line-height: 1;
     }
 
     /* ===== TABS STYLING ===== */
@@ -507,27 +538,6 @@ st.markdown("""
     }
 
     /* ===== FORM INPUT STYLING ===== */
-    .form-section {
-        background: var(--bg-secondary, #f8fafc);
-        border-radius: 14px;
-        padding: 1.5rem;
-        border: 1px solid var(--border-color, #e2e8f0);
-        margin-bottom: 1.2rem;
-        transition: all 0.3s ease;
-    }
-    .form-section:hover {
-        border-color: #93c5fd;
-        box-shadow: 0 2px 16px rgba(59,130,246,0.04);
-    }
-    .form-section-title {
-        font-weight: 700;
-        color: var(--text-color-primary, #0f172a);
-        font-size: 0.95rem;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
     .stNumberInput > div > div > input {
         border-radius: 10px !important;
         border: 2px solid var(--border-color, #e2e8f0) !important;
@@ -579,20 +589,6 @@ st.markdown("""
     }
     .streamlit-expander {
         margin-bottom: 0.5rem !important;
-    }
-
-    /* ===== CATEGORY EXPANDER STYLING ===== */
-    .category-expander .streamlit-expanderHeader {
-        background: var(--bg-secondary, linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)) !important;
-        border-left: 5px solid #3b82f6 !important;
-        font-weight: 700 !important;
-        color: var(--text-color-primary, #0f172a) !important;
-        font-size: 0.9rem !important;
-    }
-    .category-expander .streamlit-expanderHeader:hover {
-        background: var(--bg-hover, linear-gradient(135deg, #e8edf3 0%, #d1d9e6 100%)) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px var(--shadow-color, rgba(0,0,0,0.04));
     }
 
     /* ===== METRIC CARDS ===== */
@@ -667,13 +663,16 @@ st.markdown("""
 
     /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
+        .header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
         .main-title {
             font-size: 1.8rem;
         }
         .subtitle {
             font-size: 0.85rem;
-            flex-direction: column;
-            align-items: flex-start;
         }
         .result-value {
             font-size: 1.6rem;
@@ -702,6 +701,13 @@ st.markdown("""
             --shadow-color: rgba(0,0,0,0.4);
             --success-bg: #1a2e1a;
             --success-text: #86efac;
+        }
+        .dev-badge {
+            background: linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,92,246,0.14)) !important;
+            border-color: rgba(59,130,246,0.3) !important;
+        }
+        .dev-badge-name {
+            color: #f1f5f9 !important;
         }
         .result-card {
             background: var(--bg-card) !important;
@@ -847,11 +853,6 @@ st.markdown("""
         ::-webkit-scrollbar-thumb:hover {
             background: #64748b !important;
         }
-        .subtitle-status {
-            background: #1a2e1a !important;
-            border-color: #166534 !important;
-            color: #86efac !important;
-        }
     }
 
     /* ===== LIGHT MODE OVERRIDES ===== */
@@ -916,7 +917,6 @@ TARGETS = [
     "DISINTEGRATION_TIME"
 ]
 
-# Friendly names for display
 TARGET_DISPLAY_NAMES = {
     "HARDNESS": "Hardness (N)",
     "FRIABILITY": "Friability (%)",
@@ -1132,14 +1132,20 @@ feature_importance_data = compute_feature_importance(trained_models, FEATURES, T
 # 🖥️ MAIN INTERFACE
 # ============================================================
 
-# ===== HEADER =====
-st.markdown('<div class="main-title">🧪 The Formula — AI Formulation Lab</div>', unsafe_allow_html=True)
+# ===== HEADER (TITLE LEFT + BADGE RIGHT) =====
+st.markdown(f"""
+<div class="header-row">
+    <div class="main-title">🧪 The Formula — AI Formulation Lab</div>
+    <div class="dev-badge">
+        <div class="dev-badge-icon">👨‍🔬</div>
+        <span class="dev-badge-name">{DEVELOPER_NAME}</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <div class="subtitle">
     <span>AI-Powered Pharmaceutical Formulation Development Platform</span>
-    <div style="display:flex;align-items:center;gap:12px;">
-        <span class="subtitle-status">System Ready</span>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1169,7 +1175,6 @@ with tab1:
     
     input_data = {}
     
-    # Create expandable section for API & Physical Properties
     with st.expander("🔬 API & Physicochemical Properties", expanded=True):
         st.markdown("""
         <div class="info-box">
@@ -1193,7 +1198,6 @@ with tab1:
                         format="%.3f"
                     )
     
-    # Create expandable section for Excipients - WITH CATEGORY EXPANDERS
     with st.expander("💊 Excipient Composition", expanded=True):
         st.markdown("""
         <div class="info-box">
@@ -1202,7 +1206,6 @@ with tab1:
         """, unsafe_allow_html=True)
         
         if excipient_features:
-            # Group excipients by category
             excipients_by_category = {}
             uncategorized = []
             
@@ -1215,7 +1218,6 @@ with tab1:
                 else:
                     uncategorized.append(feat)
             
-            # Display each category as its own expander
             for category, excipients_list in excipients_by_category.items():
                 icon = CATEGORY_ICONS.get(category, "📌")
                 color = CATEGORY_COLORS.get(category, "#3B82F6")
@@ -1237,7 +1239,6 @@ with tab1:
                                 format="%.3f"
                             )
             
-            # Display uncategorized excipients if any
             if uncategorized:
                 with st.expander("📌 Other Components", expanded=False):
                     cols = st.columns(3)
@@ -1255,22 +1256,18 @@ with tab1:
                                 format="%.3f"
                             )
     
-    # Predict button
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         predict_clicked = st.button("🔮 Predict CQAs", key="predict_btn", use_container_width=True)
     
-    # Generate ordered input dataframe matching FEATURES order
     ordered_input = {feat: input_data[feat] for feat in FEATURES if feat in input_data}
     input_df = pd.DataFrame([ordered_input])
     
-    # Store predictions in session state for download
     if 'predictions_df' not in st.session_state:
         st.session_state.predictions_df = None
     if 'prediction_input_df' not in st.session_state:
         st.session_state.prediction_input_df = None
     
-    # Display prediction results
     if predict_clicked:
         cols = st.columns(len(TARGETS))
         predictions = {}
@@ -1304,13 +1301,11 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
         
-        # Store predictions in session state
         if predictions:
             pred_df = pd.DataFrame([predictions])
             st.session_state.predictions_df = pred_df
             st.session_state.prediction_input_df = input_df.copy()
         
-        # ===== CUSTOM FILENAME & DOWNLOAD BUTTON FOR PREDICTIONS =====
         if st.session_state.predictions_df is not None:
             st.markdown("---")
             st.markdown("""
@@ -1334,7 +1329,7 @@ with tab1:
 
 
 # ============================================================
-# TAB 2: EXCIPIENT OPTIMIZER - FAST VERSION
+# TAB 2: EXCIPIENT OPTIMIZER
 # ============================================================
 
 with tab2:
@@ -1387,10 +1382,8 @@ with tab2:
         else:
             with st.spinner("🔬 Searching the formulation design space for optimal solution..."):
                 try:
-                    # Build a complete base formulation from all features
                     base_formulation = {}
                     
-                    # First, get all API and physical properties from the input data or defaults
                     for feat in api_physical_features:
                         if feat in input_data:
                             base_formulation[feat] = input_data[feat]
@@ -1401,7 +1394,6 @@ with tab2:
                             else:
                                 base_formulation[feat] = float(df[feat].mean())
                     
-                    # Get all excipient features from session state or defaults
                     for feat in excipient_features:
                         session_val = st.session_state.get(f"excipient_{feat}", None)
                         if session_val is not None:
@@ -1411,38 +1403,29 @@ with tab2:
                         else:
                             base_formulation[feat] = float(df[feat].mean())
                     
-                    # Determine which features to optimize
                     if lock_api_physical:
                         opt_features = excipient_features
                     else:
                         opt_features = FEATURES
 
-                    # Make sure we have all features in the base formulation
                     for feat in FEATURES:
                         if feat not in base_formulation:
                             base_formulation[feat] = float(df[feat].mean())
                     
-                    # Pre-compute fixed values for faster objective function
                     fixed_values = {}
                     for feat in FEATURES:
                         if feat not in opt_features:
                             fixed_values[feat] = base_formulation[feat]
                     
-                    # Get the model for prediction
                     model = trained_models[target_choice]
                     
-                    # Pre-compute feature indices for faster access
                     opt_indices = [FEATURES.index(feat) for feat in opt_features]
                     fixed_indices = [FEATURES.index(feat) for feat in fixed_values.keys()]
                     fixed_values_list = [fixed_values[feat] for feat in fixed_values.keys()]
                     
-                    # Pre-compute bounds
                     bounds = [(float(df[f].min()), float(df[f].max())) for f in opt_features]
-                    
-                    # Get median values for filling
                     median_values = df[FEATURES].median().values
                     
-                    # Define optimized objective function
                     def objective_func_fast(x):
                         x_full = median_values.copy()
                         for idx, val in zip(opt_indices, x):
@@ -1459,7 +1442,6 @@ with tab2:
                         else:
                             return abs(pred - target_val)
                     
-                    # Run optimization with robust, fast settings
                     res = differential_evolution(
                         objective_func_fast, 
                         bounds, 
@@ -1473,7 +1455,6 @@ with tab2:
                         disp=False
                     )
                     
-                    # Use res.x directly to guarantee successful and realistic output across all cases
                     if res.x is not None:
                         st.markdown("""
                         <div class="opt-result-card">
@@ -1501,7 +1482,6 @@ with tab2:
                         opt_res = pd.DataFrame(opt_results_data)
                         st.dataframe(opt_res, use_container_width=True, hide_index=True)
                         
-                        # Reconstruct the final formulation to get predicted value
                         final_formulation = base_formulation.copy()
                         for i, feat in enumerate(opt_features):
                             final_formulation[feat] = res.x[i]
@@ -1517,7 +1497,6 @@ with tab2:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # ===== CUSTOM FILENAME & DOWNLOAD BUTTON FOR OPTIMIZATION =====
                         st.markdown("---")
                         st.markdown("""
                         <div style="font-weight:700;font-size:1.1rem;color:var(--text-color-primary, #0f172a);margin-bottom:0.5rem;">
@@ -1585,7 +1564,6 @@ with tab3:
         perf_df = pd.DataFrame(perf_records)
         st.dataframe(perf_df, use_container_width=True, hide_index=True)
         
-        # Add summary metrics
         st.markdown("---")
         st.markdown("""
         <div style="font-weight:700;font-size:1.1rem;color:var(--text-color-primary, #0f172a);margin-bottom:1rem;">
@@ -1622,7 +1600,7 @@ with tab3:
         st.info("No performance metrics available.")
     
     # ============================================================
-    # 📊 FORMULATION FACTORS ANALYSIS (Feature Importance)
+    # 📊 FORMULATION FACTORS ANALYSIS
     # ============================================================
     
     st.markdown("---")
@@ -1705,7 +1683,7 @@ with tab3:
                     tickfont=dict(size=11, color=text_color)
                 ),
                 yaxis=dict(
-                    tickfont=dict(size=11, color=text_count if 'text_count' in locals() else text_color)
+                    tickfont=dict(size=11, color=text_color)
                 ),
                 coloraxis_showscale=False
             )
@@ -1716,3 +1694,29 @@ with tab3:
             st.info("Feature importance data not available for the selected CQA.")
     else:
         st.info("Feature importance analysis is not available — this may be due to model compatibility limitations.")
+
+
+# ============================================================
+# 👨‍🔬 PROFESSIONAL FOOTER
+# ============================================================
+
+st.markdown(f"""
+<div style="
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-color-muted, #94a3b8);
+    font-weight: 400;
+    letter-spacing: 0.2px;
+    line-height: 1.6;
+">
+    🧪 The Formula — AI Formulation Lab
+    <span style="margin: 0 6px; opacity: 0.5;">|</span>
+    Designed &amp; Developed by
+    <strong style="color: var(--text-color-secondary, #475569); font-weight: 600;">Ziad Ibrahim</strong>
+    <span style="margin: 0 6px; opacity: 0.5;">|</span>
+    © {datetime.now().year} All Rights Reserved
+</div>
+""", unsafe_allow_html=True)
