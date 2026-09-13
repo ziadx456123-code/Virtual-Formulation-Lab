@@ -934,13 +934,50 @@ numeric_cols = [c for c in df_raw.columns if pd.api.types.is_numeric_dtype(df_ra
 ALL_FEATURES = [c for c in numeric_cols if c not in TARGETS]
 ALL_FEATURES = [f for f in ALL_FEATURES if df_raw[f].nunique(dropna=True) > 1 and df_raw[f].notna().sum() > 5]
 
-API_PHYSICAL_PROPS_LIST = [
-    'Molecular Weight', 'XLogP3-AA', 'Hydrogen Bond Donor Count', 
-    'Hydrogen Bond Acceptor Count', 'Rotational bond count', 
-    'Topological surface area', 'Heavy atom count', 'Complexity', 'LogS', 'DOSE',
-    'Weight(mg)', 'Bulk Density', 'Tapped Density', 'Carrs Compressibility Index', 
-    'Hausner Ratio', 'Angle of Repose', 'Thickness', 'Wetting time'
+# ============================================================
+# 📚 SCIENTIFIC CLASSIFICATION OF FEATURES
+# ============================================================
+
+# 1️⃣ API Properties — describe the drug molecule itself
+#    (typically derived from computational tools like SwissADME / RDKit)
+API_PROPERTIES = [
+    'Molecular Weight',
+    'XLogP3-AA',
+    'Hydrogen Bond Donor Count',
+    'Hydrogen Bond Acceptor Count',
+    'Rotational bond count',
+    'Topological surface area',
+    'Heavy atom count',
+    'Complexity',
+    'LogS'
 ]
+
+# 2️⃣ Material / Powder Properties — describe bulk powder behavior
+#    (measured on the powder blend BEFORE compression)
+MATERIAL_PROPERTIES = [
+    'Bulk Density',
+    'Tapped Density',
+    'Carrs Compressibility Index',
+    'Hausner Ratio',
+    'Angle of Repose'
+]
+
+# 3️⃣ Tablet Properties — measured on the FINAL compressed tablet
+#    (post-compression characterization)
+TABLET_PROPERTIES = [
+    'Weight(mg)',
+    'Thickness',
+    'Wetting time'
+]
+
+# Other / Design Variables (e.g. DOSE)
+OTHER_PROPERTIES = [
+    'DOSE'
+]
+
+API_PHYSICAL_PROPS_LIST = (
+    API_PROPERTIES + MATERIAL_PROPERTIES + TABLET_PROPERTIES + OTHER_PROPERTIES
+)
 
 api_physical_features = [f for f in ALL_FEATURES if f in API_PHYSICAL_PROPS_LIST]
 excipient_features = [f for f in ALL_FEATURES if f not in API_PHYSICAL_PROPS_LIST]
@@ -1175,28 +1212,111 @@ with tab1:
     
     input_data = {}
     
-    with st.expander("🔬 API & Physicochemical Properties", expanded=True):
-        st.markdown("""
-        <div class="info-box">
-            ⚙️ Adjust the API molecular properties and powder characteristics
-        </div>
-        """, unsafe_allow_html=True)
+    # ===== MAIN EXPANDER: FORMULATION PARAMETERS =====
+    with st.expander("📋 Formulation Parameters", expanded=True):
         
-        if api_physical_features:
-            cols = st.columns(3)
-            for idx, feat in enumerate(api_physical_features):
-                with cols[idx % 3]:
-                    min_val = float(df[feat].min())
-                    max_val = float(df[feat].max())
-                    mean_val = float(df[feat].mean())
-                    input_data[feat] = st.number_input(
-                        feat, 
-                        min_value=min_val, 
-                        max_value=max_val, 
-                        value=mean_val, 
-                        key=f"api_{feat}",
-                        format="%.3f"
-                    )
+        available_api_props = [f for f in api_physical_features if f in API_PROPERTIES]
+        available_material_props = [f for f in api_physical_features if f in MATERIAL_PROPERTIES]
+        available_tablet_props = [f for f in api_physical_features if f in TABLET_PROPERTIES]
+        available_other_props = [f for f in api_physical_features if f in OTHER_PROPERTIES]
+        
+        # ----- NESTED EXPANDER 1: API PROPERTIES -----
+        with st.expander("🧬 API Properties", expanded=True):
+            st.markdown("""
+            <div class="info-box">
+                🧬 خصائص جزيء المادة الفعالة — تُشتق من أدوات حسابية مثل SwissADME / RDKit
+            </div>
+            """, unsafe_allow_html=True)
+            if available_api_props:
+                cols = st.columns(3)
+                for idx, feat in enumerate(available_api_props):
+                    with cols[idx % 3]:
+                        min_val = float(df[feat].min())
+                        max_val = float(df[feat].max())
+                        mean_val = float(df[feat].mean())
+                        input_data[feat] = st.number_input(
+                            feat,
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=mean_val,
+                            key=f"api_{feat}",
+                            format="%.3f"
+                        )
+            else:
+                st.info("No API properties available in the dataset.")
+        
+        # ----- NESTED EXPANDER 2: MATERIAL / POWDER PROPERTIES -----
+        with st.expander("📦 Material / Powder Properties", expanded=True):
+            st.markdown("""
+            <div class="info-box">
+                📦 خصائص المسحوق قبل الضغط — تُقاس على الخليط (Bulk behavior)
+            </div>
+            """, unsafe_allow_html=True)
+            if available_material_props:
+                cols = st.columns(3)
+                for idx, feat in enumerate(available_material_props):
+                    with cols[idx % 3]:
+                        min_val = float(df[feat].min())
+                        max_val = float(df[feat].max())
+                        mean_val = float(df[feat].mean())
+                        input_data[feat] = st.number_input(
+                            feat,
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=mean_val,
+                            key=f"api_{feat}",
+                            format="%.3f"
+                        )
+            else:
+                st.info("No material properties available in the dataset.")
+        
+        # ----- NESTED EXPANDER 3: TABLET PROPERTIES -----
+        with st.expander("💊 Tablet Properties", expanded=True):
+            st.markdown("""
+            <div class="info-box">
+                💊 خصائص القرص النهائي — تُقاس بعد عملية الضغط (Post-compression)
+            </div>
+            """, unsafe_allow_html=True)
+            if available_tablet_props:
+                cols = st.columns(3)
+                for idx, feat in enumerate(available_tablet_props):
+                    with cols[idx % 3]:
+                        min_val = float(df[feat].min())
+                        max_val = float(df[feat].max())
+                        mean_val = float(df[feat].mean())
+                        input_data[feat] = st.number_input(
+                            feat,
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=mean_val,
+                            key=f"api_{feat}",
+                            format="%.3f"
+                        )
+            else:
+                st.info("No tablet properties available in the dataset.")
+        
+        # ----- NESTED EXPANDER 4 (Fallback): OTHER / DESIGN VARIABLES -----
+        if available_other_props:
+            with st.expander("📋 Other Design Variables", expanded=False):
+                st.markdown("""
+                <div class="info-box">
+                    📋 متغيرات تصميم إضافية (مثل الجرعة)
+                </div>
+                """, unsafe_allow_html=True)
+                cols = st.columns(3)
+                for idx, feat in enumerate(available_other_props):
+                    with cols[idx % 3]:
+                        min_val = float(df[feat].min())
+                        max_val = float(df[feat].max())
+                        mean_val = float(df[feat].mean())
+                        input_data[feat] = st.number_input(
+                            feat,
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=mean_val,
+                            key=f"api_{feat}",
+                            format="%.3f"
+                        )
     
     with st.expander("💊 Excipient Composition", expanded=True):
         st.markdown("""
@@ -1369,7 +1489,7 @@ with tab2:
             """, unsafe_allow_html=True)
 
     st.markdown("---")
-    lock_api_physical = st.checkbox("🔒 Fix API & Physicochemical Properties", value=True, 
+    lock_api_physical = st.checkbox("🔒 Fix Formulation Parameters", value=True, 
                            help="When enabled, only excipient concentrations will be optimized while API and physical properties remain fixed.")
 
     col_opt_btn1, col_opt_btn2, col_opt_btn3 = st.columns([1, 2, 1])
